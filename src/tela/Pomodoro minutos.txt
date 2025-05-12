@@ -1,7 +1,7 @@
 #include "Pomodoro.h"
 
 Pomodoro::Pomodoro() {
-    remainingTime = 25; // 25 seconds
+    remainingTime = 25*60; // 25 minutes
     working = true;
     tonePlayed = false;
     cycleFinished = false;
@@ -28,7 +28,7 @@ void Pomodoro::initDisplay() {
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setTextSize(2);
     tft.setCursor(10,10);
-    tft.print("Pomodoro: 25s work / 5s break");
+    tft.print("Pomodoro: 25m work / 5m break");
 }
 
 void Pomodoro::updateDisplay() {
@@ -64,11 +64,11 @@ void Pomodoro::run() {
 
             if (working) {
                 buzzer.playWorkEndTone();
-                remainingTime = 5; // 5 seconds break
+                remainingTime = 300; // 5 minutes break
             } else {
                 cycleFinished = true;
                 buzzer.playBreakEndTone();
-                remainingTime = 25; // 25 seconds work
+                remainingTime = 1500; // 25 minutes work
             }
 
             working = !working;

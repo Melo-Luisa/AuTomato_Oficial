@@ -1,3 +1,6 @@
+#ifndef BUZZER_H
+#define BUZZER_H
+
 #include <Arduino.h>
 #define BUZZER_PIN 22
 
@@ -13,3 +16,5 @@ class Buzzer {
     void playWorkEndTone();
     void playBreakEndTone();
 };
+
+#endif // BUZZER_H
