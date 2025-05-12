@@ -11,6 +11,7 @@ void setup() {
 }
 
 void loop() {
+
   for(int posDegrees = 0; posDegrees <= 180; posDegrees++) {
     servo1.write(posDegrees);
     Serial.println(posDegrees);
