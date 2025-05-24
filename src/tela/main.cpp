@@ -4,13 +4,29 @@
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ESP32Servo.h>
 
 #define BUZZER_PIN 22
+#define BUTTON_PIN 36
+int num_ciclos = 4;
+static const int servoPin = 5;
+
+Servo servo1;
 
 AsyncWebServer server(80);
-const char* ssid = "Morena branca";
-const char* password = "jujuba25";
+const char* ssid = "rededoprojeto";
+const char* password = "arededoprojeto";
 TFT_eSPI tft = TFT_eSPI();
+
+const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser
+const int tempoPausa = 5;
+
+uint32_t lastSecond = 0;
+int tempoRestante = tempoTrabalho;
+bool emTrabalho = true;
+bool somTocado = false;
+bool cicloFinalizado = false;
+bool pomodoroIniciado = false;
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -20,22 +36,24 @@ const char index_html[] PROGMEM = R"rawliteral(
   </head>
   <body>
     <h1>Pomodoro em andamento...</h1>
-    <p id="status">Status: Carregando...</p>
+    <p id="status">Status: Aguardando início...</p>
 
     <script>
       setInterval(() => {
         fetch("/status")
           .then(res => res.json())
           .then(data => {
-            // Atualiza o texto conforme o estado atual
-            if (data.emTrabalho) {
-              document.getElementById("status").innerHTML = "Status: Trabalho";
+            if (data.iniciado) {
+              if (data.emTrabalho) {
+                document.getElementById("status").innerHTML = "Status: Trabalho";
+              } else {
+                document.getElementById("status").innerHTML = "Status: Pausa";
+              }
+              if (data.fim) {
+                alert("Ciclo finalizado!");
+              }
             } else {
-              document.getElementById("status").innerHTML = "Status: Pausa";
-            }
-            // Se chegou ao fim do intervalo, dispara alerta
-            if (data.fim) {
-              alert("Ciclo finalizado!");
+              document.getElementById("status").innerHTML = "Status: Aguardando início...";
             }
           })
           .catch(err => console.error(err));
@@ -45,12 +63,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-uint32_t lastSecond = 0;
-int tempoRestante   = 25;  // 25 segundos de trabalho
-bool emTrabalho     = true;
-bool somTocado      = false;
-bool cicloFinalizado = false;
-
+// ----------------- Funções de som ---------------------
 void playTone(int freq, int dur) {
   ledcSetup(0, freq, 8);
   ledcAttachPin(BUZZER_PIN, 0);
@@ -70,53 +83,98 @@ void playBreakEndTone() {
 }
 
 void atualizarTela() {
-  tft.fillRect(0, 40, 240, 160, TFT_BLACK);
-  tft.setCursor(20, 50);
-  tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
+  uint16_t bgColor = emTrabalho ? TFT_DARKGREEN : TFT_NAVY;
+  tft.fillRect(0, 40, 240, 160, bgColor);
 
-  tft.setTextSize(6);
-  tft.setCursor(80, 100);
-  if (tempoRestante < 10) tft.print("0");
-  tft.print(tempoRestante);
+  tft.setTextSize(2);
+  tft.setCursor(20, 50);
+
+  if (!pomodoroIniciado) {
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.print("Pressione o botao");
+    tft.setCursor(20, 80);
+    tft.print("para iniciar!");
+  } else {
+    tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
+    tft.setTextSize(6);
+    tft.setCursor(80, 100);
+    if (tempoRestante < 10) tft.print("0");
+    tft.print(tempoRestante);
+  }
+}
+
+void servo_motor(){
+  for(int posDegrees = 0; posDegrees <= 180; posDegrees++) {
+    servo1.write(posDegrees);
+    //Serial.println(posDegrees);
+    delay(20);
+  }
+}
+
+
+
+void iniciarFaseTrabalho() {
+  emTrabalho = true;
+  tempoRestante = tempoTrabalho;
+  Serial.println("Iniciando trabalho");
+}
+
+void iniciarFasePausa() {
+  emTrabalho = false;
+  tempoRestante = tempoPausa;
+  Serial.println("Iniciando pausa");
+}
+
+
+void encerrarFaseTrabalho() {
+  playWorkEndTone();
+  iniciarFasePausa();
+}
+
+
+void encerrarFasePausa() {
+  playBreakEndTone();
+  cicloFinalizado = true;
+  iniciarFaseTrabalho();
 }
 
 void setup() {
+  Serial.begin(115200);
   pinMode(BUZZER_PIN, OUTPUT);
-  tft.init(); 
+  pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
+  servo1.attach(servoPin);  
+
+  tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setTextSize(2);
-  tft.setCursor(10,10);
+  tft.setCursor(10, 10);
   tft.print("Pomodoro: 25s foco / 5s pausa");
 
-  lastSecond = millis();
   atualizarTela();
 
-  Serial.begin(115200);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
   Serial.println("\nConectado ao WiFi");
-  Serial.print("IP do ESP32: "); 
+  Serial.print("IP do ESP32: ");
   Serial.println(WiFi.localIP());
 
-  // Rota principal
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send_P(200, "text/html", index_html);
   });
 
-  // Rota de status retorna JSON com fim e emTrabalho
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false")
                 + String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false")
+                + String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false")
                 + String("}");
     req->send(200, "application/json", json);
-    // reseta flag de fim para não disparar alerta repetido
     cicloFinalizado = false;
   });
 
@@ -124,8 +182,23 @@ void setup() {
   Serial.println("Servidor iniciado");
 }
 
+// ---------------- Loop Principal ---------------------
 void loop() {
-  if (millis() - lastSecond >= 1000) {
+
+
+  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
+    delay(200);  // debounce
+    Serial.println("Pomodoro iniciado!");
+    servo_motor();
+    delay(1000);
+    pomodoroIniciado = true;
+    iniciarFaseTrabalho();
+    atualizarTela();
+    lastSecond = millis();
+  }
+
+  if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
+
     lastSecond += 1000;
     tempoRestante--;
 
@@ -137,20 +210,28 @@ void loop() {
       somTocado = true;
 
       if (emTrabalho) {
-        playWorkEndTone();
-        tempoRestante = 5;   // pausa de 5s
-      } else {
-        cicloFinalizado = true;
-        playBreakEndTone();
-        tempoRestante = 25;  // foco de 25s
+        encerrarFaseTrabalho();
+      } 
+      else {
+        encerrarFasePausa();
+        num_ciclos--;
       }
 
-      emTrabalho = !emTrabalho;
       atualizarTela();
     }
 
     if (somTocado && tempoRestante >= 0) {
       somTocado = false;
     }
+  }
+
+  if(num_ciclos <= 0) {//eh p dar tipo 2h
+    servo_motor();
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(10, 10);
+    tft.print("FIM!");
+    delay(2000);
   }
 }
