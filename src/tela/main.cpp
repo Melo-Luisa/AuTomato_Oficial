@@ -175,6 +175,9 @@ void setup() {
 
 // ---------------- Loop Principal ---------------------
 void loop() {
+
+  int num_ciclos = 4;
+
   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
     delay(200);  // debounce
     Serial.println("Pomodoro iniciado!");
@@ -184,7 +187,8 @@ void loop() {
     lastSecond = millis();
   }
 
-  if (pomodoroIniciado && millis() - lastSecond >= 1000) {
+  if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
+
     lastSecond += 1000;
     tempoRestante--;
 
@@ -197,8 +201,10 @@ void loop() {
 
       if (emTrabalho) {
         encerrarFaseTrabalho();
-      } else {
+      } 
+      else {
         encerrarFasePausa();
+        num_ciclos--;
       }
 
       atualizarTela();
@@ -207,5 +213,14 @@ void loop() {
     if (somTocado && tempoRestante >= 0) {
       somTocado = false;
     }
+  }
+
+  if(num_ciclos <= 0) {//eh p dar tipo 2h
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(10, 10);
+    tft.print("FIM!");
+    delay(2000);
   }
 }
