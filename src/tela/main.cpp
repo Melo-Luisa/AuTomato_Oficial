@@ -10,8 +10,6 @@
 #define BUTTON_PIN 36
 static const int servoPin = 5;
 
-Servo servo1;
-
 AsyncWebServer server(80);
 const char* ssid = "rededoprojeto";
 const char* password = "arededoprojeto";
@@ -81,31 +79,6 @@ void playBreakEndTone() {
   playTone(500, 500);
 }
 
-// ------------- Funções de fase ------------------------
-void iniciarFaseTrabalho() {
-  emTrabalho = true;
-  tempoRestante = tempoTrabalho;
-  Serial.println("Iniciando trabalho");
-}
-void iniciarFasePausa() {
-  emTrabalho = false;
-  tempoRestante = tempoPausa;
-  Serial.println("Iniciando pausa");
-}
-
-void encerrarFaseTrabalho() {
-  playWorkEndTone();
-  iniciarFasePausa();
-}
-
-
-void encerrarFasePausa() {
-  playBreakEndTone();
-  cicloFinalizado = true;
-  iniciarFaseTrabalho();
-}
-
-// ---------------- Tela -------------------------------
 void atualizarTela() {
   uint16_t bgColor = emTrabalho ? TFT_DARKGREEN : TFT_NAVY;
   tft.fillRect(0, 40, 240, 160, bgColor);
@@ -119,37 +92,19 @@ void atualizarTela() {
     tft.setCursor(20, 80);
     tft.print("para iniciar!");
   } else {
-    if (emTrabalho) {
-      tft.setTextColor(TFT_WHITE, bgColor);
-      tft.print(" Trabalhando!");
-    } else {
-      tft.setTextColor(TFT_CYAN, bgColor);
-      tft.print(" Hora da pausa!");
-    }
-
+    tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
     tft.setTextSize(6);
     tft.setCursor(80, 100);
     if (tempoRestante < 10) tft.print("0");
     tft.print(tempoRestante);
   }
 }
-void servo_motor(){
-  for(int posDegrees = 0; posDegrees <= 180; posDegrees++) {
-    servo1.write(posDegrees);
-    //Serial.println(posDegrees);
-    delay(20);
-  }
-}
 
-
-
-// ---------------- Setup ------------------------------
 void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);  // GPIO36 não tem INPUT_PULLUP
-
-  Serial.begin(115200);
-  servo1.attach(servoPin);
+  pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
 
   tft.init();
   tft.setRotation(1);
@@ -228,15 +183,5 @@ void loop() {
     if (somTocado && tempoRestante >= 0) {
       somTocado = false;
     }
-  }
-
-  if(num_ciclos <= 0) {//eh p dar tipo 2h
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.setCursor(10, 10);
-    tft.print("FIM!");
-    servo_motor();
-    delay(2000);
   }
 }
