@@ -5,6 +5,9 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <ESP32Servo.h>
+#include <FS.h>
+#include <SPIFFS.h>
+
 
 #define BUZZER_PIN 22
 #define BUTTON_PIN 36
@@ -14,8 +17,8 @@ static const int servoPin = 5;
 Servo servo1;
 
 AsyncWebServer server(80);
-const char* ssid = "rededoprojeto";
-const char* password = "arededoprojeto";
+const char* ssid = "ADV-LLS";
+const char* password = "049Lsa*339";
 TFT_eSPI tft = TFT_eSPI();
 
 const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser
@@ -155,6 +158,10 @@ void setup() {
   tft.print("Pomodoro: 25s foco / 5s pausa");
 
   atualizarTela();
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Erro ao montar SPIFFS");
+    return;
+  }
 
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
@@ -165,8 +172,8 @@ void setup() {
   Serial.print("IP do ESP32: ");
   Serial.println(WiFi.localIP());
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-    req->send_P(200, "text/html", index_html);
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+  request->send(SPIFFS, "/index.html", "text/html");
   });
 
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
