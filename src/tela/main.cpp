@@ -131,9 +131,9 @@ void setup() {
     cicloFinalizado = false;
   });
 
-//   server.begin();
-//   Serial.println("Servidor iniciado");
-// }
+   server.begin();
+   Serial.println("Servidor iniciado");
+}
 
 void loop() {
   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {  // botão pressionado = HIGH
