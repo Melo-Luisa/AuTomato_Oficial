@@ -6,12 +6,22 @@
 #include <ESPAsyncWebServer.h>
 
 #define BUZZER_PIN 22
-#define BUTTON_PIN 36//17  
+#define BUTTON_PIN 36
 
 AsyncWebServer server(80);
 const char* ssid = "Redmi Note 14";
 const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
+
+const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser
+const int tempoPausa = 5;
+
+uint32_t lastSecond = 0;
+int tempoRestante = tempoTrabalho;
+bool emTrabalho = true;
+bool somTocado = false;
+bool cicloFinalizado = false;
+bool pomodoroIniciado = false;
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -48,13 +58,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-uint32_t lastSecond = 0;
-int tempoRestante   = 25;
-bool emTrabalho     = true;
-bool somTocado      = false;
-bool cicloFinalizado = false;
-bool pomodoroIniciado = false;
-
+// ----------------- Funções de som ---------------------
 void playTone(int freq, int dur) {
   ledcSetup(0, freq, 8);
   ledcAttachPin(BUZZER_PIN, 0);
@@ -73,20 +77,52 @@ void playBreakEndTone() {
   playTone(500, 500);
 }
 
+// ------------- Funções de fase ------------------------
+void iniciarFaseTrabalho() {
+  emTrabalho = true;
+  tempoRestante = tempoTrabalho;
+  Serial.println("Iniciando trabalho");
+}
+
+void encerrarFaseTrabalho() {
+  playWorkEndTone();
+  iniciarFasePausa();
+}
+
+void iniciarFasePausa() {
+  emTrabalho = false;
+  tempoRestante = tempoPausa;
+  Serial.println("Iniciando pausa");
+}
+
+void encerrarFasePausa() {
+  playBreakEndTone();
+  cicloFinalizado = true;
+  iniciarFaseTrabalho();
+}
+
+// ---------------- Tela -------------------------------
 void atualizarTela() {
-  tft.fillRect(0, 40, 240, 160, TFT_BLACK);
+  uint16_t bgColor = emTrabalho ? TFT_DARKGREEN : TFT_NAVY;
+  tft.fillRect(0, 40, 240, 160, bgColor);
+
+  tft.setTextSize(2);
   tft.setCursor(20, 50);
 
   if (!pomodoroIniciado) {
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.setTextSize(2);
     tft.print("Pressione o botao");
     tft.setCursor(20, 80);
     tft.print("para iniciar!");
   } else {
-    tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
+    if (emTrabalho) {
+      tft.setTextColor(TFT_WHITE, bgColor);
+      tft.print("🔨 Trabalhando!");
+    } else {
+      tft.setTextColor(TFT_CYAN, bgColor);
+      tft.print("☕ Hora da pausa!");
+    }
+
     tft.setTextSize(6);
     tft.setCursor(80, 100);
     if (tempoRestante < 10) tft.print("0");
@@ -94,9 +130,12 @@ void atualizarTela() {
   }
 }
 
+// ---------------- Setup ------------------------------
 void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
+  pinMode(BUTTON_PIN, INPUT);  // GPIO36 não tem INPUT_PULLUP
+
+  Serial.begin(115200);
 
   tft.init();
   tft.setRotation(1);
@@ -108,7 +147,6 @@ void setup() {
 
   atualizarTela();
 
-  Serial.begin(115200);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -131,24 +169,22 @@ void setup() {
     cicloFinalizado = false;
   });
 
-   server.begin();
-   Serial.println("Servidor iniciado");
+  server.begin();
+  Serial.println("Servidor iniciado");
 }
 
+// ---------------- Loop Principal ---------------------
 void loop() {
-  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {  // botão pressionado = HIGH
+  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
     delay(200);  // debounce
     Serial.println("Pomodoro iniciado!");
     pomodoroIniciado = true;
-    tempoRestante = 25;
-    emTrabalho = true;
-    somTocado = false;
-    cicloFinalizado = false;
-    lastSecond = millis();
+    iniciarFaseTrabalho();
     atualizarTela();
+    lastSecond = millis();
   }
 
-  if (pomodoroIniciado && (millis() - lastSecond >= 1000)) {
+  if (pomodoroIniciado && millis() - lastSecond >= 1000) {
     lastSecond += 1000;
     tempoRestante--;
 
@@ -160,15 +196,11 @@ void loop() {
       somTocado = true;
 
       if (emTrabalho) {
-        playWorkEndTone();
-        tempoRestante = 5;
+        encerrarFaseTrabalho();
       } else {
-        cicloFinalizado = true;
-        playBreakEndTone();
-        tempoRestante = 25;
+        encerrarFasePausa();
       }
 
-      emTrabalho = !emTrabalho;
       atualizarTela();
     }
 
