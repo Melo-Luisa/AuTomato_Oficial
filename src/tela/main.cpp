@@ -102,6 +102,29 @@ void atualizarTela() {
   }
 }
 
+void iniciarFaseTrabalho() {
+  emTrabalho = true;
+  tempoRestante = tempoTrabalho;
+  Serial.println("Iniciando trabalho");
+}
+
+void encerrarFaseTrabalho() {
+  playWorkEndTone();
+  iniciarFasePausa();
+}
+
+void iniciarFasePausa() {
+  emTrabalho = false;
+  tempoRestante = tempoPausa;
+  Serial.println("Iniciando pausa");
+}
+
+void encerrarFasePausa() {
+  playBreakEndTone();
+  cicloFinalizado = true;
+  iniciarFaseTrabalho();
+}
+
 void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
@@ -183,5 +206,14 @@ void loop() {
     if (somTocado && tempoRestante >= 0) {
       somTocado = false;
     }
+  }
+
+  if(num_ciclos <= 0) {//eh p dar tipo 2h
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(10, 10);
+    tft.print("FIM!");
+    delay(2000);
   }
 }
