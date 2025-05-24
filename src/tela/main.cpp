@@ -10,6 +10,8 @@
 #define BUTTON_PIN 36
 static const int servoPin = 5;
 
+Servo servo1;
+
 AsyncWebServer server(80);
 const char* ssid = "rededoprojeto";
 const char* password = "arededoprojeto";
@@ -102,15 +104,20 @@ void atualizarTela() {
   }
 }
 
+void servo_motor(){
+  for(int posDegrees = 0; posDegrees <= 180; posDegrees++) {
+    servo1.write(posDegrees);
+    //Serial.println(posDegrees);
+    delay(20);
+  }
+}
+
+
+
 void iniciarFaseTrabalho() {
   emTrabalho = true;
   tempoRestante = tempoTrabalho;
   Serial.println("Iniciando trabalho");
-}
-
-void encerrarFaseTrabalho() {
-  playWorkEndTone();
-  iniciarFasePausa();
 }
 
 void iniciarFasePausa() {
@@ -119,6 +126,13 @@ void iniciarFasePausa() {
   Serial.println("Iniciando pausa");
 }
 
+
+void encerrarFaseTrabalho() {
+  playWorkEndTone();
+  iniciarFasePausa();
+}
+
+
 void encerrarFasePausa() {
   playBreakEndTone();
   cicloFinalizado = true;
@@ -126,8 +140,10 @@ void encerrarFasePausa() {
 }
 
 void setup() {
+  Serial.begin(115200);
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
+  servo1.attach(servoPin);  
 
   tft.init();
   tft.setRotation(1);
@@ -174,6 +190,7 @@ void loop() {
     delay(200);  // debounce
     Serial.println("Pomodoro iniciado!");
     servo_motor();
+    delay(1000);
     pomodoroIniciado = true;
     iniciarFaseTrabalho();
     atualizarTela();
@@ -209,6 +226,7 @@ void loop() {
   }
 
   if(num_ciclos <= 0) {//eh p dar tipo 2h
+    servo_motor();
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setTextSize(2);
