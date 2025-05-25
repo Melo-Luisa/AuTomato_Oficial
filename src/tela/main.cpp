@@ -191,6 +191,7 @@ void loop() {
     iniciarFaseTrabalho();
     atualizarTela();
     lastSecond = millis();
+    lastSecondNema = micros();
   }
 
   if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
@@ -229,12 +230,21 @@ void loop() {
   }
 
   if(num_ciclos <= 0 && cicloFinalizado == true) {//eh p dar tipo 2h
-    servo_motor();
-    tft.fillScreen(TFT_BLACK);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.setCursor(10, 10);
-    tft.print("FIM!");
-    delay(2000);
+    if(somTocado == true){
+      somTocado = false;
+      cicloFinalizado = true;
+      playWorkEndTone();
+      // servo_motor();
+      // delay(1000);
+    }
+
+    if(cicloFinalizado == true){
+      cicloFinalizado = false;
+      tft.fillScreen(TFT_BLACK);
+      tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+      tft.setTextSize(2);
+      tft.setCursor(10, 10);
+      tft.print("FIM!");
+    }
   }
 }
