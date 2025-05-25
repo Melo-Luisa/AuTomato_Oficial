@@ -13,8 +13,8 @@ static const int servoPin = 5;
 Servo servo1;
 
 AsyncWebServer server(80);
-const char* ssid = "rededoprojeto";
-const char* password = "arededoprojeto";
+const char* ssid = "Redmi Note 14";
+const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
 
 const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser
@@ -112,8 +112,6 @@ void servo_motor(){
   }
 }
 
-
-
 void iniciarFaseTrabalho() {
   emTrabalho = true;
   tempoRestante = tempoTrabalho;
@@ -130,13 +128,6 @@ void iniciarFasePausa() {
   tempoRestante = tempoPausa;
   Serial.println("Iniciando pausa");
 }
-
-
-void encerrarFaseTrabalho() {
-  playWorkEndTone();
-  iniciarFasePausa();
-}
-
 
 void encerrarFasePausa() {
   // playBreakEndTone();
@@ -186,16 +177,16 @@ void setup() {
   Serial.println("Servidor iniciado");
 }
 
+int num_ciclos = 1;
+
 // ---------------- Loop Principal ---------------------
 void loop() {
-
-  int num_ciclos = 4;
 
   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
     delay(200);  // debounce
     Serial.println("Pomodoro iniciado!");
     //servo_motor();
-    delay(1000);
+    //delay(1000);
     pomodoroIniciado = true;
     iniciarFaseTrabalho();
     atualizarTela();
@@ -223,7 +214,9 @@ void loop() {
         //encerrarFasePausa();
         playBreakEndTone();
         cicloFinalizado = true;
-        iniciarFaseTrabalho();
+        if(num_ciclos > 1){
+          iniciarFaseTrabalho();
+        }
         num_ciclos--;
       }
 
@@ -235,7 +228,7 @@ void loop() {
     }
   }
 
-  if(num_ciclos <= 0) {//eh p dar tipo 2h
+  if(num_ciclos <= 0 && cicloFinalizado == true) {//eh p dar tipo 2h
     servo_motor();
     tft.fillScreen(TFT_BLACK);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
