@@ -109,8 +109,8 @@ void iniciarFaseTrabalho() {
 }
 
 void encerrarFaseTrabalho() {
-  playWorkEndTone();
-  iniciarFasePausa();
+  // playWorkEndTone();
+  // iniciarFasePausa();
 }
 
 void iniciarFasePausa() {
@@ -120,9 +120,9 @@ void iniciarFasePausa() {
 }
 
 void encerrarFasePausa() {
-  playBreakEndTone();
-  cicloFinalizado = true;
-  iniciarFaseTrabalho();
+  // playBreakEndTone();
+  // cicloFinalizado = true;
+  // iniciarFaseTrabalho();
 }
 
 void setup() {
@@ -173,7 +173,7 @@ void loop() {
   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
     delay(200);  // debounce
     Serial.println("Pomodoro iniciado!");
-    servo_motor();
+    //servo_motor();
     pomodoroIniciado = true;
     iniciarFaseTrabalho();
     atualizarTela();
@@ -193,10 +193,15 @@ void loop() {
       somTocado = true;
 
       if (emTrabalho) {
-        encerrarFaseTrabalho();
+        //encerrarFaseTrabalho();
+        playWorkEndTone();
+        iniciarFasePausa();
       } 
       else {
-        encerrarFasePausa();
+        //encerrarFasePausa();
+        playBreakEndTone();
+        cicloFinalizado = true;
+        iniciarFaseTrabalho();
         num_ciclos--;
       }
 
