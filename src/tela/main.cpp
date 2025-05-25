@@ -26,6 +26,10 @@
 static const int servoPin = 5;
 
 Servo servo1;
+#define BUTTON_PIN 36
+static const int servoPin = 5;
+
+Servo servo1;
 
 AsyncWebServer server(80);
 const char* ssid = "Redmi Note 14";
@@ -114,6 +118,10 @@ void atualizarTela() {
   tft.fillRect(0, 40, 240, 160, bgColor);
 
   tft.setTextSize(2);
+  uint16_t bgColor = emTrabalho ? TFT_DARKGREEN : TFT_NAVY;
+  tft.fillRect(0, 40, 240, 160, bgColor);
+
+  tft.setTextSize(2);
   tft.setCursor(20, 50);
 
   if (!pomodoroIniciado) {
@@ -179,7 +187,12 @@ void encerrarFasePausa() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.begin(115200);
   pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
+  servo1.attach(servoPin);  
+
+  tft.init();
   pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
   servo1.attach(servoPin);  
 
@@ -200,7 +213,9 @@ void setup() {
   }
   Serial.println("\nConectado ao WiFi");
   Serial.print("IP do ESP32: ");
+  Serial.print("IP do ESP32: ");
   Serial.println(WiFi.localIP());
+
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send_P(200, "text/html", index_html);
@@ -209,6 +224,7 @@ void setup() {
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false")
                 + String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false")
+                + String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false")
                 + String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false")
                 + String("}");
     req->send(200, "application/json", json);
