@@ -164,6 +164,7 @@ int tempoRestante = duracaoFoco;
 bool emTrabalho = true;
 bool somTocado = false;
 bool cicloFinalizado = false;
+bool pomodoroIniciado = false;
 
 // ----------------- Funções de som ---------------------
 void playTone(int freq, int dur) {
@@ -196,14 +197,19 @@ void atualizarTela() {
     tft.print("Pressione o botao");
     tft.setCursor(20, 80);
     tft.print("para iniciar!");
-  } else {
-    tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
-    tft.setTextSize(2);
-    tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
+  } 
+  else {
+    // Exibir mm:ss
+    int minutos = tempoRestante / 60;
+    int segundos = tempoRestante % 60;
+
     tft.setTextSize(6);
-    tft.setCursor(80, 100);
-    if (tempoRestante < 10) tft.print("0");
-    tft.print(tempoRestante);
+    tft.setCursor(60, 100);
+    if (minutos < 10) tft.print("0");
+    tft.print(minutos);
+    tft.print(":");
+    if (segundos < 10) tft.print("0");
+    tft.print(segundos);
   }
 }
 
@@ -215,21 +221,10 @@ void servo_motor(){
   }
 }
 
-  // Exibir mm:ss
-  int minutos = tempoRestante / 60;
-  int segundos = tempoRestante % 60;
-
-  tft.setTextSize(6);
-  tft.setCursor(60, 100);
-  if (minutos < 10) tft.print("0");
-  tft.print(minutos);
-  tft.print(":");
-  if (segundos < 10) tft.print("0");
-  tft.print(segundos);
 
 void iniciarFaseTrabalho() {
   emTrabalho = true;
-  tempoRestante = tempoTrabalho;
+  tempoRestante = duracaoFoco;
   Serial.println("Iniciando trabalho");
 }
 
@@ -240,7 +235,7 @@ void encerrarFaseTrabalho() {
 
 void iniciarFasePausa() {
   emTrabalho = false;
-  tempoRestante = tempoPausa;
+  tempoRestante = duracaoPausa;
   Serial.println("Iniciando pausa");
 }
 
@@ -333,7 +328,6 @@ void loop() {
     iniciarFaseTrabalho();
     atualizarTela();
     lastSecond = millis();
-    lastSecondNema = micros();
   }
 
   if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
@@ -351,7 +345,8 @@ void loop() {
       if (emTrabalho) {
         //encerrarFaseTrabalho();
         playWorkEndTone();
-        iniciaFasePausa();
+        iniciarFasePausa();
+      }
       else {
         //encerrarFasePausa();
         playBreakEndTone();
