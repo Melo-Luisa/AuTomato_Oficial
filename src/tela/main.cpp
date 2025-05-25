@@ -1,3 +1,84 @@
+// #include <TFT_eSPI.h>
+// #include <SPI.h>
+// #include <Arduino.h>
+// #include <WiFi.h>
+// #include <AsyncTCP.h>
+// #include <ESPAsyncWebServer.h>
+// #include "Buzzer.h"
+// #include "Pomodoro.h"
+
+// AsyncWebServer server(80);
+
+// const char* ssid = "Morena branca";
+// const char* password = "jujuba25";
+
+// Pomodoro pomodoro; // 25 min work / 5 min break
+
+// const char index_html[] PROGMEM = R"rawliteral(
+// <!DOCTYPE html>
+// <html>
+//   <head>
+//     <title>Pomodoro com ESP32</title>
+//   </head>
+//   <body>
+//     <h1>Pomodoro em andamento...</h1>
+//     <p id="status">Status: Carregando...</p>
+
+//     <script>
+//       setInterval(() => {
+//         fetch("/status")
+//           .then(res => res.json())
+//           .then(data => {
+//             if (data.emTrabalho) {
+//               document.getElementById("status").innerHTML = "Status: Trabalho";
+//             } else {
+//               document.getElementById("status").innerHTML = "Status: Pausa";
+//             }
+//             if (data.fim) {
+//               alert("Ciclo finalizado!");
+//             }
+//           })
+//           .catch(err => console.error(err));
+//       }, 2000);
+//     </script>
+//   </body>
+// </html>
+// )rawliteral";
+
+// void setup() {
+//   pomodoro.updateDisplay();
+
+//   Serial.begin(115200);
+//   WiFi.begin(ssid, password);
+//   while (WiFi.status() != WL_CONNECTED) {
+//     delay(500);
+//     Serial.print(".");
+//   }
+
+//   Serial.println("\nConectado ao WiFi");
+//   Serial.print("IP do ESP32: ");
+//   Serial.println(WiFi.localIP());
+
+//   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
+//     req->send_P(200, "text/html", index_html);
+//   });
+
+//   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
+//     String json = String("{\"fim\":") + (pomodoro.isCycleFinished() ? "true" : "false")
+//                 + String(",\"emTrabalho\":") + (pomodoro.isWorking() ? "true" : "false")
+//                 + String("}");
+//     req->send(200, "application/json", json);
+//     pomodoro.setCycleFinished(false);
+//   });
+
+//   server.begin();
+//   Serial.println("Servidor iniciado");
+// }
+
+// void loop() {
+//   pomodoro.run();
+// }
+
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <Arduino.h>
@@ -17,15 +98,15 @@ const char* ssid = "Redmi Note 14";
 const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
 
-const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser
-const int tempoPausa = 5;
+//const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser
+//const int tempoPausa = 5;
 
-uint32_t lastSecond = 0;
-int tempoRestante = tempoTrabalho;
-bool emTrabalho = true;
-bool somTocado = false;
-bool cicloFinalizado = false;
-bool pomodoroIniciado = false;
+//uint32_t lastSecond = 0;
+//int tempoRestante = tempoTrabalho;
+//bool emTrabalho = true;
+//bool somTocado = false;
+//bool cicloFinalizado = false;
+//bool pomodoroIniciado = false;
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -37,22 +118,35 @@ const char index_html[] PROGMEM = R"rawliteral(
     <h1>Pomodoro em andamento...</h1>
     <p id="status">Status: Aguardando início...</p>
 
+    <form onsubmit="enviarConfiguracao(); return false;">
+      <label>Tempo de trabalho: <input type="number" id="foco" value="25*60"></label><br>
+      <label>Tempo de pausa: <input type="number" id="pausa" value="5*60"></label><br>
+      <button type="submit">Atualizar Ciclos</button>
+    </form>
+
     <script>
+      function enviarConfiguracao() {
+        const foco = document.getElementById("foco").value;
+        const pausa = document.getElementById("pausa").value;
+
+        fetch("/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `foco=${foco}&pausa=${pausa}`
+        }).then(res => {
+          if (res.ok) {
+            alert("Ciclos atualizados!");
+          }
+        });
+      }
+
       setInterval(() => {
         fetch("/status")
           .then(res => res.json())
           .then(data => {
-            if (data.iniciado) {
-              if (data.emTrabalho) {
-                document.getElementById("status").innerHTML = "Status: Trabalho";
-              } else {
-                document.getElementById("status").innerHTML = "Status: Pausa";
-              }
-              if (data.fim) {
-                alert("Ciclo finalizado!");
-              }
-            } else {
-              document.getElementById("status").innerHTML = "Status: Aguardando início...";
+            document.getElementById("status").innerHTML = data.emTrabalho ? "Status: Trabalho" : "Status: Pausa";
+            if (data.fim) {
+              alert("Ciclo finalizado!");
             }
           })
           .catch(err => console.error(err));
@@ -61,6 +155,15 @@ const char index_html[] PROGMEM = R"rawliteral(
   </body>
 </html>
 )rawliteral";
+
+// Variáveis de controle
+uint32_t lastSecond = 0;
+int duracaoFoco = 25*60; // 25 minutos
+int duracaoPausa = 5*60; // 5 minutos
+int tempoRestante = duracaoFoco;
+bool emTrabalho = true;
+bool somTocado = false;
+bool cicloFinalizado = false;
 
 // ----------------- Funções de som ---------------------
 void playTone(int freq, int dur) {
@@ -112,6 +215,18 @@ void servo_motor(){
   }
 }
 
+  // Exibir mm:ss
+  int minutos = tempoRestante / 60;
+  int segundos = tempoRestante % 60;
+
+  tft.setTextSize(6);
+  tft.setCursor(60, 100);
+  if (minutos < 10) tft.print("0");
+  tft.print(minutos);
+  tft.print(":");
+  if (segundos < 10) tft.print("0");
+  tft.print(segundos);
+
 void iniciarFaseTrabalho() {
   emTrabalho = true;
   tempoRestante = tempoTrabalho;
@@ -147,7 +262,8 @@ void setup() {
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setTextSize(2);
   tft.setCursor(10, 10);
-  tft.print("Pomodoro: 25s foco / 5s pausa");
+  tft.print("Pomodoro configuravel");
+  delay(1000);
 
   atualizarTela();
 
@@ -156,9 +272,21 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
+  delay(1000);
   Serial.println("\nConectado ao WiFi");
   Serial.print("IP do ESP32: ");
   Serial.println(WiFi.localIP());
+
+
+  // Mostra IP no canto inferior direito em amarelo
+  String ipStr = "IP: " + WiFi.localIP().toString();
+  int16_t x1, y1;
+  uint16_t w, h;
+  tft.setTextSize(1);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  w = tft.textWidth((char*)ipStr.c_str());  // Calcula a largura do texto
+  tft.setCursor(240 - w - 5, 230);  // posição ajustada para canto inferior direito
+  tft.print(ipStr);
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send_P(200, "text/html", index_html);
@@ -171,6 +299,20 @@ void setup() {
                 + String("}");
     req->send(200, "application/json", json);
     cicloFinalizado = false;
+  });
+
+  // Rota para configurar tempos
+  server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
+    if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
+      duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
+      duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
+      tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
+
+      Serial.printf("Novo foco: %ds, nova pausa: %ds\n", duracaoFoco, duracaoPausa);
+      req->send(200, "text/plain", "Ciclos atualizados");
+    } else {
+      req->send(400, "text/plain", "Parâmetros inválidos");
+    }
   });
 
   server.begin();
@@ -209,8 +351,7 @@ void loop() {
       if (emTrabalho) {
         //encerrarFaseTrabalho();
         playWorkEndTone();
-        iniciarFasePausa();
-      } 
+        iniciaFasePausa();
       else {
         //encerrarFasePausa();
         playBreakEndTone();
@@ -228,7 +369,6 @@ void loop() {
       somTocado = false;
     }
   }
-
   if(num_ciclos <= 0 && cicloFinalizado == true) {//eh p dar tipo 2h
     if(somTocado == true){
       somTocado = false;
