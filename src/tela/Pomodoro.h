@@ -1,40 +1,38 @@
-#ifndef POMODORO_H
-#define POMODORO_H
+// #include <TFT_eSPI.h>
+// #include <SPI.h>
+// #include <Arduino.h>
+// #include <WiFi.h>
+// #include <AsyncTCP.h>
+// #include <ESPAsyncWebServer.h>
+// //#include "Buzzer.h"
 
-#include <TFT_eSPI.h>
-#include "Buzzer.h"
+// class Pomodoro {
+// private:
+//     int tempoRestante;
+//     bool emTrabalho;
+//     bool somTocado;
+//     bool cicloFinalizado;
+//     unsigned long lastSecond;
+//     TFT_eSPI tft;
 
-class Pomodoro {
-private:
-    void initDisplay();                   // Initializes display
+// public:
 
-    int remainingTime;                    // Time in seconds
-    bool working;
-    bool tonePlayed;
-    bool cycleFinished;
-    unsigned long lastSecond;
+//     void setLastSecond(unsigned long lastSecond);
+//     unsigned long getLastSecond();
+//     void setTempoRestante(int tempoRestante);
+//     int getTempoRestante();
+//     void setEmTrabalho(bool emTrabalho);
+//     bool getEmTrabalho();
+//     void setSomTocado(bool somTocado);
+//     bool getSomtocado();
+//     void setCicloFinalizado(bool cicloFinalizado);
+//     bool getCicloFinalizado();
 
-    TFT_eSPI tft;
-    Buzzer buzzer;
-public:
-    Pomodoro();                           // Default constructor
-    Pomodoro(int workTimeSeconds, int buzzerPin); // Constructor with parameters
+//     Pomodoro();
+//     ~Pomodoro();
+//     void setup();
+//     void atualizarTela();
+//     void executar();
 
-    void run();                           // Executes the Pomodoro logic
-    void updateDisplay();                 // Updates the screen display
 
-    // Getters
-    int getRemainingTime();
-    bool isWorking();
-    bool isTonePlayed();
-    bool isCycleFinished();
-
-    // Setters
-    void setRemainingTime(int time);
-    void setWorking(bool state);
-    void setTonePlayed(bool state);
-    void setCycleFinished(bool state);
-
-};
-
-#endif
+// };

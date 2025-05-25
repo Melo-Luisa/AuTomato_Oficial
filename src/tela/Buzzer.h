@@ -1,20 +1,21 @@
-#ifndef BUZZER_H
-#define BUZZER_H
 
-#include <Arduino.h>
-#define BUZZER_PIN 22
+//#ifndef BUZZER_H
+//#define BUZZER_H
 
-class Buzzer {
-    private:
-    int buzzerPin;
+//#include <Arduino.h>
+//#define BUZZER_PIN 22
 
-    public:
-    Buzzer();
-    Buzzer(int pin);
-    ~Buzzer();	
-    void playTone(int freq, int dur);
-    void playWorkEndTone();
-    void playBreakEndTone();
-};
+//class Buzzer {
+    //private:
+    //int buzzerPin;
+
+    //public:
+    //Buzzer();
+    //Buzzer(int pin);
+    //~Buzzer();	
+    //void playTone(int freq, int dur);
+    //void playWorkEndTone();
+    //void playBreakEndTone();
+//};
 
 #endif // BUZZER_H
