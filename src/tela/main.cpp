@@ -89,8 +89,8 @@
 #define BUZZER_PIN 22
 
 AsyncWebServer server(80);
-const char* ssid = "ALHN-1EB0";
-const char* password = "02917030";
+const char* ssid = "Redmi Note 14";
+const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
 
 const char index_html[] PROGMEM = R"rawliteral(
@@ -240,8 +240,8 @@ void setup() {
   // Rota para configurar tempos
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
-      duracaoFoco = req->getParam("foco", true)->value().toInt();
-      duracaoPausa = req->getParam("pausa", true)->value().toInt();
+      duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
+      duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
 
       Serial.printf("Novo foco: %ds, nova pausa: %ds\n", duracaoFoco, duracaoPausa);
