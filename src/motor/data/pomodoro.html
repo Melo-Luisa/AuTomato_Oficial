@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>Pomodoro</title>
+<link href="css/style.css" rel="stylesheet"/>
+</head>
+<body>
+<header>
+<h1>AuTomato</h1>
+<p>Tempo de foco com o método Pomodoro 🍅</p>
+</header>
+<main>
+<h1>Tempo de Foco</h1>
+<label for="minutes">Escolha o tempo (min):</label>
+<input id="minutes" max="90" min="1" type="number" value="25"/><br/><br/>
+<div id="timer">25:00</div>
+<button onclick="startTimer()">Iniciar</button>
+<button onclick="resetTimer()">Resetar</button>
+</main>
+<script src="js/pomodoro.js"></script>
+<footer>By Giovanna, Giulia, Luisa &amp; Luigi</footer></body>
+</html>

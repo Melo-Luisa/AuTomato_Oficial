@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>Questionário Final</title>
+<link href="css/style.css" rel="stylesheet"/>
+</head>
+<body>
+<header>
+<h1>AuTomato</h1>
+<p>Uma abordagem formativa que une o método Pomodoro à reflexão sobre foco, motivação e produtividade.</p>
+</header>
+<main>
+<h1>Depois do Pomodoro</h1>
+<form id="pos-form">
+<label for="focoFinal">Como está seu foco agora?</label>
+<input id="focoFinal" required="" type="text"/>
+<label for="comentarios">Comentários</label>
+<textarea id="comentarios"></textarea>
+<h2>Avalie o progresso das tarefas realizadas</h2>
+<div class="tasks">
+<label for="task1">Tarefa 1: <span id="val1">0</span>%</label>
+<input id="task1" max="100" min="0" name="task1" oninput="val1.innerText = this.value" type="range" value="0"/>
+<label for="task2">Tarefa 2: <span id="val2">0</span>%</label>
+<input id="task2" max="100" min="0" name="task2" oninput="val2.innerText = this.value" type="range" value="0"/>
+<label for="task3">Tarefa 3: <span id="val3">0</span>%</label>
+<input id="task3" max="100" min="0" name="task3" oninput="val3.innerText = this.value" type="range" value="0"/>
+<label for="task4">Tarefa 4: <span id="val4">0</span>%</label>
+<input id="task4" max="100" min="0" name="task4" oninput="val4.innerText = this.value" type="range" value="0"/>
+<label for="task5">Tarefa 5: <span id="val5">0</span>%</label>
+<input id="task5" max="100" min="0" name="task5" oninput="val5.innerText = this.value" type="range" value="0"/>
+<label for="task6">Tarefa 6: <span id="val6">0</span>%</label>
+<input id="task6" max="100" min="0" name="task6" oninput="val6.innerText = this.value" type="range" value="0"/>
+<label for="task7">Tarefa 7: <span id="val7">0</span>%</label>
+<input id="task7" max="100" min="0" name="task7" oninput="val7.innerText = this.value" type="range" value="0"/>
+<label for="task8">Tarefa 8: <span id="val8">0</span>%</label>
+<input id="task8" max="100" min="0" name="task8" oninput="val8.innerText = this.value" type="range" value="0"/>
+</div>
+<button type="submit">Enviar Dados</button>
+</form>
+</main>
+<script src="js/pos.js"></script>
+<footer>By Giovanna, Giulia, Luisa &amp; Luigi</footer></body>
+</html>

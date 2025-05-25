@@ -1,97 +1,59 @@
-// #include <TFT_eSPI.h>
-// #include <SPI.h>
-// #include <Arduino.h>
-// #include <WiFi.h>
-// #include <AsyncTCP.h>
-// #include <ESPAsyncWebServer.h>
-// #include "Buzzer.h"
-// #include "Pomodoro.h"
-
-// AsyncWebServer server(80);
-
-// const char* ssid = "Morena branca";
-// const char* password = "jujuba25";
-
-// Pomodoro pomodoro; // 25 min work / 5 min break
-
-// const char index_html[] PROGMEM = R"rawliteral(
-// <!DOCTYPE html>
-// <html>
-//   <head>
-//     <title>Pomodoro com ESP32</title>
-//   </head>
-//   <body>
-//     <h1>Pomodoro em andamento...</h1>
-//     <p id="status">Status: Carregando...</p>
-
-//     <script>
-//       setInterval(() => {
-//         fetch("/status")
-//           .then(res => res.json())
-//           .then(data => {
-//             if (data.emTrabalho) {
-//               document.getElementById("status").innerHTML = "Status: Trabalho";
-//             } else {
-//               document.getElementById("status").innerHTML = "Status: Pausa";
-//             }
-//             if (data.fim) {
-//               alert("Ciclo finalizado!");
-//             }
-//           })
-//           .catch(err => console.error(err));
-//       }, 2000);
-//     </script>
-//   </body>
-// </html>
-// )rawliteral";
-
-// void setup() {
-//   pomodoro.updateDisplay();
-
-//   Serial.begin(115200);
-//   WiFi.begin(ssid, password);
-//   while (WiFi.status() != WL_CONNECTED) {
-//     delay(500);
-//     Serial.print(".");
-//   }
-
-//   Serial.println("\nConectado ao WiFi");
-//   Serial.print("IP do ESP32: ");
-//   Serial.println(WiFi.localIP());
-
-//   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-//     req->send_P(200, "text/html", index_html);
-//   });
-
-//   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
-//     String json = String("{\"fim\":") + (pomodoro.isCycleFinished() ? "true" : "false")
-//                 + String(",\"emTrabalho\":") + (pomodoro.isWorking() ? "true" : "false")
-//                 + String("}");
-//     req->send(200, "application/json", json);
-//     pomodoro.setCycleFinished(false);
-//   });
-
-//   server.begin();
-//   Serial.println("Servidor iniciado");
-// }
-
-// void loop() {
-//   pomodoro.run();
-// }
-
 #include <TFT_eSPI.h>
 #include <SPI.h>
 #include <Arduino.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ESP32Servo.h>
+#include <Accelstepper.h>
+
+// Steps for revolution on Nema 17 motor: 200
+// Total steps for revolution on Nema 17 motor with 1/32 microstepping: 6400
+// Target RPM: 1 / (timer time(minutes))
+// Steps per Second =  Total Steps per Revolution × Target RPM / 60
+// For 25 min: 2.13 steps per second 
+// Step Delay (µs)= 1 /Steps per Second ​× 1,000,000 (for 25 min: 469483.57 µs)
+ 
+// Define stepper motor connections and motor interface type. Motor interface type must be set to 1 when using a driver:
+// Defines pins numbers (from the ESP32 board) for the stepper motor
+#define dirPin 25 // pin do passo
+#define stepPin 33 // pin do step
+#define motorInterfaceType 1 //tipo 1 se estiver usando driver
+
 
 #define BUZZER_PIN 22
+#define BUTTON_PIN 36
+static const int servoPin = 5;
+
+Servo servo1;
 
 AsyncWebServer server(80);
 const char* ssid = "Redmi Note 14";
 const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
+
+const int tempoTrabalho = 25;  // pode ajustar para 1500 (25min) se quiser tempoTrabalho em minutos
+const int tempoPausa = 5;
+
+uint32_t lastSecond = 0;
+int tempoRestante = tempoTrabalho; // tempoRestante em segundos
+bool emTrabalho = true;
+bool somTocado = false;
+bool cicloFinalizado = false;
+bool pomodoroIniciado = false;
+
+AccelStepper stepper = AccelStepper(motorInterfaceType, stepPin, dirPin);
+
+//double rpm_ida = 1.0 / (tempoTrabalho) * 60; // 1 ciclo de a cada tempoTrabalho segundos
+//double rpm_volta = 1.0 / (tempoPausa) * 60; // 1 ciclo de a cada tempoPausa minutos
+double speed = (200.0 / tempoTrabalho); // velocidade em passos por segundo no ciclo de ida
+double step = (1000000.0 / speed); // tempo em microsegundos para cada passo no ciclo de ida
+double speed2 = (200.0 / tempoPausa); // velocidade em passos por segundo no ciclo de volta
+double step2 = (1000000.0 / speed2); // tempo em microsegundos para cada passo no ciclo de volta
+bool motorAtivo = false; 
+
+
+// ----------------- HTML para a página web ---------------------
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -101,37 +63,24 @@ const char index_html[] PROGMEM = R"rawliteral(
   </head>
   <body>
     <h1>Pomodoro em andamento...</h1>
-    <p id="status">Status: Carregando...</p>
-
-    <form onsubmit="enviarConfiguracao(); return false;">
-      <label>Tempo de trabalho: <input type="number" id="foco" value="25*60"></label><br>
-      <label>Tempo de pausa: <input type="number" id="pausa" value="5*60"></label><br>
-      <button type="submit">Atualizar Ciclos</button>
-    </form>
+    <p id="status">Status: Aguardando início...</p>
 
     <script>
-      function enviarConfiguracao() {
-        const foco = document.getElementById("foco").value;
-        const pausa = document.getElementById("pausa").value;
-
-        fetch("/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `foco=${foco}&pausa=${pausa}`
-        }).then(res => {
-          if (res.ok) {
-            alert("Ciclos atualizados!");
-          }
-        });
-      }
-
       setInterval(() => {
         fetch("/status")
           .then(res => res.json())
           .then(data => {
-            document.getElementById("status").innerHTML = data.emTrabalho ? "Status: Trabalho" : "Status: Pausa";
-            if (data.fim) {
-              alert("Ciclo finalizado!");
+            if (data.iniciado) {
+              if (data.emTrabalho) {
+                document.getElementById("status").innerHTML = "Status: Trabalho";
+              } else {
+                document.getElementById("status").innerHTML = "Status: Pausa";
+              }
+              if (data.fim) {
+                alert("Ciclo finalizado!");
+              }
+            } else {
+              document.getElementById("status").innerHTML = "Status: Aguardando início...";
             }
           })
           .catch(err => console.error(err));
@@ -141,15 +90,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-// Variáveis de controle
-uint32_t lastSecond = 0;
-int duracaoFoco = 25*60; // 25 minutos
-int duracaoPausa = 5*60; // 5 minutos
-int tempoRestante = duracaoFoco;
-bool emTrabalho = true;
-bool somTocado = false;
-bool cicloFinalizado = false;
-
+// ----------------- Funções de som ---------------------
 void playTone(int freq, int dur) {
   ledcSetup(0, freq, 8);
   ledcAttachPin(BUZZER_PIN, 0);
@@ -169,97 +110,151 @@ void playBreakEndTone() {
 }
 
 void atualizarTela() {
-  tft.fillRect(0, 40, 240, 160, TFT_BLACK);
-  tft.setCursor(20, 50);
-  tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
+  uint16_t bgColor = emTrabalho ? TFT_DARKGREEN : TFT_NAVY;
+  tft.fillRect(0, 40, 240, 160, bgColor);
+
   tft.setTextSize(2);
-  tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
+  tft.setCursor(20, 50);
 
-  // Exibir mm:ss
-  int minutos = tempoRestante / 60;
-  int segundos = tempoRestante % 60;
-
-  tft.setTextSize(6);
-  tft.setCursor(60, 100);
-  if (minutos < 10) tft.print("0");
-  tft.print(minutos);
-  tft.print(":");
-  if (segundos < 10) tft.print("0");
-  tft.print(segundos);
+  if (!pomodoroIniciado) {
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.print("Pressione o botao");
+    tft.setCursor(20, 80);
+    tft.print("para iniciar!");
+  } else {
+    tft.setTextColor(emTrabalho ? TFT_GREEN : TFT_CYAN, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.print(emTrabalho ? "Tempo de foco:" : "Pausa:");
+    tft.setTextSize(6);
+    tft.setCursor(80, 100);
+    if (tempoRestante < 10) tft.print("0");
+    tft.print(tempoRestante);
+  }
 }
 
+void servo_motor(){
+  for(int posDegrees = 0; posDegrees <= 180; posDegrees++) {
+    servo1.write(posDegrees);
+    //Serial.println(posDegrees);
+    delay(20);
+  }
+}
+
+
+
+void iniciarFaseTrabalho() {
+  emTrabalho = true;
+  tempoRestante = tempoTrabalho;
+  Serial.println("Iniciando trabalho");
+
+  stepper.setSpeed(speed);  // positivo = sentido horário, velocidade para a fase de trabalho
+  motorAtivo = true; // ativa o motorNema17
+}
+
+void iniciarFasePausa() {
+  emTrabalho = false;
+  tempoRestante = tempoPausa;
+  Serial.println("Iniciando pausa");
+
+  stepper.setSpeed(-speed2);  // negativo = sentido anti-horário, velocidade para a fase de pausa
+  motorAtivo = true; // ativa o motorNema17
+}
+
+
+void encerrarFaseTrabalho() {
+  playWorkEndTone();
+  motorAtivo = false;  // Para o motor Nema17 após 1 ciclo
+  iniciarFasePausa();
+}
+
+
+void encerrarFasePausa() {
+  playBreakEndTone();
+  motorAtivo = false; // Para o motor Nema17 após 1 ciclo
+  cicloFinalizado = true;
+  iniciarFaseTrabalho();
+}
+
+  //--------------------------------------------------------------------------------  
+
 void setup() {
+  Serial.begin(115200);
   pinMode(BUZZER_PIN, OUTPUT);
-  tft.init(); 
+  pinMode(BUTTON_PIN, INPUT);  // GPIO36 NÃO tem INPUT_PULLUP, então usamos INPUT
+  servo1.attach(servoPin);  
+
+  tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setTextSize(2);
   tft.setCursor(10, 10);
-  tft.print("Pomodoro configuravel");
-  delay(1000);
+  tft.print("Pomodoro: 25s foco / 5s pausa");
 
-  lastSecond = millis();
   atualizarTela();
 
-  Serial.begin(115200);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  delay(1000);
   Serial.println("\nConectado ao WiFi");
-  Serial.print("IP do ESP32: "); 
+  Serial.print("IP do ESP32: ");
   Serial.println(WiFi.localIP());
 
-  // Mostra IP no canto inferior direito em amarelo
-  String ipStr = "IP: " + WiFi.localIP().toString();
-  int16_t x1, y1;
-  uint16_t w, h;
-  tft.setTextSize(1);
-  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  w = tft.textWidth((char*)ipStr.c_str());  // Calcula a largura do texto
-  tft.setCursor(240 - w - 5, 230);  // posição ajustada para canto inferior direito
-  tft.print(ipStr);
-  
-  // Página principal
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send_P(200, "text/html", index_html);
   });
 
-  // Status JSON
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false")
                 + String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false")
+                + String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false")
                 + String("}");
     req->send(200, "application/json", json);
     cicloFinalizado = false;
   });
 
-  // Rota para configurar tempos
-  server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
-    if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
-      duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
-      duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
-      tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
-
-      Serial.printf("Novo foco: %ds, nova pausa: %ds\n", duracaoFoco, duracaoPausa);
-      req->send(200, "text/plain", "Ciclos atualizados");
-    } else {
-      req->send(400, "text/plain", "Parâmetros inválidos");
-    }
-  });
-
   server.begin();
   Serial.println("Servidor iniciado");
+
+  // Define a velocidade máxima do motor Nema17:
+  stepper.setMaxSpeed(1000); 
 }
 
+
+
+// ---------------- Loop Principal ---------------------
 void loop() {
-  if (millis() - lastSecond >= 1000) {
+
+  int num_ciclos = 4;
+
+  if (motorAtivo) {
+    stepper.runSpeed();  // Gira o motor constantemente na velocidade definida
+    if(emTrabalho){
+      Serial.println("Gire horario");
+    }
+    else{
+      Serial.println("Gire Anti-Horario");
+    }
+  }
+
+  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
+    delay(200);  // debounce
+    Serial.println("Pomodoro iniciado!");
+    servo_motor();
+    delay(1000);
+    pomodoroIniciado = true;
+    iniciarFaseTrabalho();
+    atualizarTela();
+    lastSecond = millis();
+  }
+  
+  if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
+
     lastSecond += 1000;
     tempoRestante--;
-
+ 
     if (tempoRestante >= 0) {
       atualizarTela();
     }
@@ -268,15 +263,14 @@ void loop() {
       somTocado = true;
 
       if (emTrabalho) {
-        playWorkEndTone();
-        tempoRestante = duracaoPausa;
-      } else {
-        cicloFinalizado = true;
-        playBreakEndTone();
-        tempoRestante = duracaoFoco;
+        encerrarFaseTrabalho(); // Inverte a direção do motor e altera a velocidade para a fase de pausa
+        motorAtivo = true;
+      } 
+      else {
+        encerrarFasePausa();
+        num_ciclos--;
       }
 
-      emTrabalho = !emTrabalho;
       atualizarTela();
     }
 
@@ -284,4 +278,34 @@ void loop() {
       somTocado = false;
     }
   }
+
+  if(num_ciclos <= 0) {//eh p dar tipo 2h
+    servo_motor();
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(10, 10);
+    tft.print("FIM!");
+    delay(2000);
+  }
 }
+
+// #include <AccelStepper.h>
+// #define dirPin 25 // pin do passo
+// #define stepPin 33 // pin do step
+// #define motorInterfaceType 1 //tipo 1 se estiver usando driver
+
+// AccelStepper stepper = AccelStepper(motorInterfaceType, dirPin, stepPin); // Defaults to AccelStepper::FULL4WIRE (4 pins) on 2, 3, 4, 5
+
+// void setup()
+// {  
+//   pinMode(dirPin, OUTPUT);
+//   pinMode(stepPin, OUTPUT);
+//   stepper.setMaxSpeed(1000);
+//   stepper.setSpeed(50);	
+// }
+
+// void loop()
+// {  
+//    stepper.runSpeed();
+// }
