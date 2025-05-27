@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>AuTomato</title>
+    <link rel="stylesheet" href="data/style.css">
+  </head>
+  <body>
+    <h1>Pomodoro em andamento...</h1>
+    <p id="status">Status: Aguardando início...</p>
+
+    <form onsubmit="enviarConfiguracao(); return false;">
+      <label>Tempo de trabalho: <input type="number" id="foco" value="1500"></label><br>
+      <label>Tempo de pausa: <input type="number" id="pausa" value="300"></label><br>
+      <button type="submit">Atualizar Ciclos</button>
+    </form>
+
+    <div id="pesquisa" style="display:none;">
+      <p id="pergunta"></p>
+      <input type="text" id="resposta">
+      <button onclick="enviarResposta()">Enviar</button>
+    </div>
+
+    <script>
+      function enviarConfiguracao() {
+        const foco = document.getElementById("foco").value;
+        const pausa = document.getElementById("pausa").value;
+
+        fetch("/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `foco=${foco}&pausa=${pausa}`
+        }).then(res => {
+          if (res.ok) alert("Ciclos atualizados!");
+        });
+      }
+
+      function exibirPergunta(pergunta) {
+        document.getElementById("pergunta").innerText = pergunta;
+        document.getElementById("pesquisa").style.display = "block";
+      }
+
+      function enviarResposta() {
+        const resp = document.getElementById("resposta").value;
+        fetch("/resposta", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `resposta=${resp}`
+        }).then(res => {
+          if (res.ok) {
+            document.getElementById("pesquisa").style.display = "none";
+          }
+        });
+      }
+
+      setInterval(() => {
+        fetch("/status")
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById("status").innerHTML = data.emTrabalho ? "Status: Trabalho" : "Status: Pausa";
+            if (data.pergunta) {
+              exibirPergunta(data.pergunta);
+            }
+          });
+      }, 2000);
+    </script>
+  </body>
+</html>

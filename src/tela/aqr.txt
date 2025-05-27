@@ -8,36 +8,88 @@
 #include <ESP32Servo.h>
 #include <FS.h>
 #include <SPIFFS.h>
-// #include "respostas.json"
+#include "respostas.json"
 #include <ArduinoJson.h>
 
-#define BUZZER_PIN 13
+#define BUZZER_PIN 22
 #define BUTTON_PIN 36
-#define BUZZER_CHANNEL 6    // Canal lógico PWM interno do ESP32
 static const int servoPin = 5;
 
 Servo servo1;
 
 AsyncWebServer server(80);
-const char* ssid = "rededoprojeto";
-const char* password = "arededoprojeto";
+const char* ssid = "Redmi Note 14";
+const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
 
-String lerArquivo(fs::FS &fs, const char *caminho) {
-  fs::File file = fs.open(caminho, "r");
-  if (!file || file.isDirectory()) {
-    Serial.println("Erro ao abrir arquivo");
-    return String();
-  }
+const char index_html[] PROGMEM = R"rawliteral(
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Pomodoro com ESP32</title>
+  </head>
+  <body>
+    <h1>Pomodoro em andamento...</h1>
+    <p id="status">Status: Aguardando início...</p>
 
-  String conteudo;
-  while (file.available()) {
-    conteudo += (char)file.read();
-  }
-  file.close();
-  return conteudo;
-}
+    <form onsubmit="enviarConfiguracao(); return false;">
+      <label>Tempo de trabalho: <input type="number" id="foco" value="1500"></label><br>
+      <label>Tempo de pausa: <input type="number" id="pausa" value="300"></label><br>
+      <button type="submit">Atualizar Ciclos</button>
+    </form>
 
+    <div id="pesquisa" style="display:none;">
+      <p id="pergunta"></p>
+      <input type="text" id="resposta">
+      <button onclick="enviarResposta()">Enviar</button>
+    </div>
+
+    <script>
+      function enviarConfiguracao() {
+        const foco = document.getElementById("foco").value;
+        const pausa = document.getElementById("pausa").value;
+
+        fetch("/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `foco=${foco}&pausa=${pausa}`
+        }).then(res => {
+          if (res.ok) alert("Ciclos atualizados!");
+        });
+      }
+
+      function exibirPergunta(pergunta) {
+        document.getElementById("pergunta").innerText = pergunta;
+        document.getElementById("pesquisa").style.display = "block";
+      }
+
+      function enviarResposta() {
+        const resp = document.getElementById("resposta").value;
+        fetch("/resposta", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: `resposta=${resp}`
+        }).then(res => {
+          if (res.ok) {
+            document.getElementById("pesquisa").style.display = "none";
+          }
+        });
+      }
+
+      setInterval(() => {
+        fetch("/status")
+          .then(res => res.json())
+          .then(data => {
+            document.getElementById("status").innerHTML = data.emTrabalho ? "Status: Trabalho" : "Status: Pausa";
+            if (data.pergunta) {
+              exibirPergunta(data.pergunta);
+            }
+          });
+      }, 2000);
+    </script>
+  </body>
+</html>
+)rawliteral";
 
 uint32_t lastSecond = 0;
 int duracaoFoco = 5;
@@ -53,7 +105,7 @@ String perguntaAtual = "";
 bool girou = false;
 //bool girouFim = false; // Variável para controlar o giro do servo no fim
 
-//int servoPos = 0; // posição atual do servo
+int servoPos = 0; // posição atual do servo
 
 void salvarResposta(const String& pergunta, const String& resposta) {
   JsonDocument doc;
@@ -68,11 +120,11 @@ void salvarResposta(const String& pergunta, const String& resposta) {
 }
 
 void playTone(int freq, int dur) {
-  ledcSetup(BUZZER_CHANNEL, freq, 8);             
-  ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);      
-  ledcWrite(BUZZER_CHANNEL, 128);                
+  ledcSetup(0, freq, 8);
+  ledcAttachPin(BUZZER_PIN, 0);
+  ledcWrite(0, 128);
   delay(dur);
-  ledcWrite(BUZZER_CHANNEL, 0); 
+  ledcWrite(0, 0);
 }
 
 void playWorkEndTone() {
@@ -86,11 +138,10 @@ void playBreakEndTone() {
 }
 
 void mostrarPerguntaTFT(const String& pergunta) {
-  tft.fillScreen(TFT_WHITE);
-  tft.setTextColor(TFT_YELLOW, TFT_WHITE);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_YELLOW);
   tft.setTextSize(2);
-  int16_t x = (tft.width() - tft.textWidth((char*)pergunta.c_str())) / 2;
-  tft.setCursor(x, 50);
+  tft.setCursor(10, 50);
   tft.println(pergunta);
 }
 
@@ -98,55 +149,50 @@ void atualizarTela() {
   if (esperandoResposta) return;
   uint16_t bgColor = emTrabalho ? TFT_GREEN : TFT_SKYBLUE;
 
-  tft.fillScreen(TFT_WHITE);
   tft.setTextSize(2);
   tft.setCursor(20, 50);
 
-  // Centralizar o texto de status
-  String status = emTrabalho ? "Trabalhando..." : "Pausa...";
-  int16_t xStatus = (tft.width() - tft.textWidth((char*)status.c_str())) / 2;
-  int16_t xMsg = (tft.width() - tft.textWidth((char*)"Pressione o botao")) / 2;
-  int16_t xMsg2 = (tft.width() - tft.textWidth((char*)"para iniciar!")) / 2;
-
   if (!pomodoroIniciado) {
-    tft.setTextColor(TFT_RED, TFT_WHITE);
-    tft.setCursor(xMsg, 50);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.print("Pressione o botao");
-    tft.setCursor(xMsg2, 80);
+    tft.setCursor(20, 80);
     tft.print("para iniciar!");
   } else {
-    tft.setTextColor(bgColor, TFT_WHITE);
-    tft.setCursor(xStatus, 50);
-    tft.print(status);
+    tft.setTextColor(bgColor, TFT_BLACK);
+    tft.setCursor(20, 50);
+    tft.print(emTrabalho ? "Trabalhando..." : "Pausa...");
 
     int minutos = tempoRestante / 60;
     int segundos = tempoRestante % 60;
     tft.setTextSize(6);
-    char tempoStr[6];
-    sprintf(tempoStr, "%02d:%02d", minutos, segundos);
-    int16_t xTempo = (tft.width() - tft.textWidth(tempoStr)) / 2;
-    tft.setCursor(xTempo, 100);
-    tft.print(tempoStr);
+    tft.setCursor(60, 100);
+    if (minutos < 10) tft.print("0");
+    tft.print(minutos);
+    tft.print(":");
+    if (segundos < 10) tft.print("0");
+    tft.print(segundos);
   }
 }
 
-void girarServoInicio() {
-  
-  for (int posDegrees = 0; posDegrees <= 180; posDegrees++) {
-    servo1.write(posDegrees);
-    delay(15);
-  }
-  //servoPos = 180;
-  
-}
+// void girarServoInicio() {
+//   if (servoPos == 0) {
+//     for (int posDegrees = 0; posDegrees <= 10; posDegrees++) {
+//       servo1.(1);
+//       delay(15);
+//     }
+//     servoPos = 180;
+//   }
+// }
 
-void girarServoFim() {
-  for (int posDegrees = 180; posDegrees >= 0; posDegrees--) {
-    servo1.write(posDegrees);
-    delay(15);
-  }
-  //servoPos = 180;
-}
+// void girarServoFim() {
+//   if (servoPos == 180) {
+//     for (int posDegrees = 10; posDegrees >= 0; posDegrees--) {
+//       servo1.write(-1);
+//       delay(15);
+//     }
+//     servoPos = 0;
+//   }
+// }
 
 void setup() {
   Serial.begin(115200);
@@ -155,15 +201,10 @@ void setup() {
   servo1.attach(servoPin);
   SPIFFS.begin(true);
 
-  if (!SPIFFS.begin(true)) {
-    Serial.println("Erro ao montar SPIFFS");
-    return;
-  }
-
   tft.init();
   tft.setRotation(1);
-  tft.fillScreen(TFT_WHITE);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setTextSize(2);
   tft.setCursor(10, 10);
   tft.print("Pomodoro configuravel");
@@ -181,12 +222,12 @@ void setup() {
 
   String ipStr = "IP: " + WiFi.localIP().toString();
   tft.setTextSize(2);
-  tft.setTextColor(TFT_RED, TFT_WHITE);
+  tft.setTextColor(TFT_RED, TFT_BLACK);
   tft.setCursor(240 - tft.textWidth((char*)ipStr.c_str()) - 5, 230);
   tft.print(ipStr);
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-    req->send(SPIFFS, "/index.html", "text/html");
+    req->send_P(200, "text/html", index_html);
   });
 
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
@@ -232,13 +273,16 @@ void loop() {
   if (esperandoResposta) return;
 
   if (!pomodoroIniciado && teste) {
-    girarServoInicio();
     playWorkEndTone();
-    tft.fillScreen(TFT_WHITE);
-    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setTextSize(2);
     tft.setCursor(10, 10);
     tft.print("Pomodoro configuravel");
+    //if(girouFim==false){
+      //Serial.println("Servo girado para 180 graus");
+      //girouFim = true;
+    //}
     pomodoroIniciado = true;
     
     teste = false;
@@ -283,16 +327,20 @@ void loop() {
       //mostrarPerguntaTFT(perguntaAtual);
     }
 
-    // Centralizar texto FIM!
     if (!esperandoResposta) {
       cicloFinalizado = false;
-      tft.fillScreen(TFT_WHITE);
-      tft.setTextColor(TFT_YELLOW, TFT_WHITE);
+      tft.fillScreen(TFT_BLACK);
+      tft.setTextColor(TFT_YELLOW, TFT_BLACK);
       tft.setTextSize(6);
-      int16_t xFim = (tft.width() - tft.textWidth((char*)"FIM!")) / 2;
-      tft.setCursor(xFim, 10);
+      tft.setCursor(10, 10);
       tft.print("FIM!");
-      girarServoFim();
+      if(girou==false){
+        // servo1.write(0);
+        // delay(200);
+        //servo1.write(180);
+        //delay(1000); 
+        //girou = true;
+      }
     }
   }
 }
