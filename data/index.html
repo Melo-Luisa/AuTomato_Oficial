@@ -2,15 +2,15 @@
 <html>
   <head>
     <title>AuTomato</title>
-    <link rel="stylesheet" href="data/style.css">
+    <link rel="stylesheet" href="style.css">
   </head>
   <body>
     <h1>Pomodoro em andamento...</h1>
     <p id="status">Status: Aguardando início...</p>
 
     <form onsubmit="enviarConfiguracao(); return false;">
-      <label>Tempo de trabalho: <input type="number" id="foco" value="1500"></label><br>
-      <label>Tempo de pausa: <input type="number" id="pausa" value="300"></label><br>
+      <label>Tempo de trabalho (min): <input type="number" id="foco" value="25"></label><br>
+      <label>Tempo de pausa (min): <input type="number" id="pausa" value="5"></label><br>
       <button type="submit">Atualizar Ciclos</button>
     </form>
 
@@ -24,11 +24,13 @@
       function enviarConfiguracao() {
         const foco = document.getElementById("foco").value;
         const pausa = document.getElementById("pausa").value;
-
+        // Converter minutos para segundos
+        const focoSeg = foco * 60;
+        const pausaSeg = pausa * 60;
         fetch("/config", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `foco=${foco}&pausa=${pausa}`
+          body: `foco=${focoSeg}&pausa=${pausaSeg}`
         }).then(res => {
           if (res.ok) alert("Ciclos atualizados!");
         });
