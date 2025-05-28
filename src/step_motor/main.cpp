@@ -8,8 +8,8 @@
 
 #include <AccelStepper.h>
 
-#define STEP_PIN 12 // The ESP32 pin GPIO12 connected to STEP pin of DRV8825 module
-#define DIR_PIN  14 // The ESP32 pin GPIO14 connected to DIR pin of DRV8825 module
+#define STEP_PIN 25 // The ESP32 pin GPIO12 connected to STEP pin of DRV8825 module
+#define DIR_PIN  33 // The ESP32 pin GPIO14 connected to DIR pin of DRV8825 module
 
 // Creates an instance
 AccelStepper stepper(AccelStepper::DRIVER, STEP_PIN, DIR_PIN);
