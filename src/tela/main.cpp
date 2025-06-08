@@ -8,19 +8,20 @@
 // #include <ESP32Servo.h>
 // #include <FS.h>
 // #include <SPIFFS.h>
-// // #include "respostas.json"
+// #include "respostas.json"
 // #include <ArduinoJson.h>
 
 // #define BUZZER_PIN 13
 // #define BUTTON_PIN 36
+// #define BUTTON_EMERGENCY 39 // Botão de emergencia
 // #define BUZZER_CHANNEL 6    // Canal lógico PWM interno do ESP32
 // static const int servoPin = 5;
 
 // Servo servo1;
 
 // AsyncWebServer server(80);
-// const char* ssid = "rededoprojeto";
-// const char* password = "arededoprojeto";
+// const char* ssid = "Morena branca";
+// const char* password = "jujuba25";
 // TFT_eSPI tft = TFT_eSPI();
 
 // String lerArquivo(fs::FS &fs, const char *caminho) {
@@ -42,6 +43,7 @@
 // uint32_t lastSecond = 0;
 // int duracaoFoco = 5;
 // int duracaoPausa = 5;
+// int contEmergency = 0; // Contador para o botão de emergência
 // int tempoRestante = duracaoFoco;
 // bool emTrabalho = true;
 // bool somTocado = false;
@@ -85,6 +87,14 @@
 //   playTone(500, 500);
 // }
 
+// void playEmergencyTone() {
+//   playTone(2000, 500);
+//   delay(100);
+//   playTone(2000, 500);
+//   delay(100);
+//   playTone(2000, 500);
+// }
+
 // void mostrarPerguntaTFT(const String& pergunta) {
 //   tft.fillScreen(TFT_WHITE);
 //   tft.setTextColor(TFT_YELLOW, TFT_WHITE);
@@ -93,6 +103,7 @@
 //   tft.setCursor(x, 50);
 //   tft.println(pergunta);
 // }
+
 
 // void atualizarTela() {
 //   if (esperandoResposta) return;
@@ -148,10 +159,33 @@
 //   //servoPos = 180;
 // }
 
+// void emergencyStop() {
+//     Serial.println("Parando o pomodoro de emergencia!");
+//     pomodoroIniciado = false;
+//     emTrabalho = true;
+//     tempoRestante = duracaoFoco;
+//     somTocado = false;
+//     cicloFinalizado = false;
+//     esperandoResposta = false;
+//     atualizarTela();
+//     //girarServoFim();
+// }
+
+// void screenEmergency() {
+//   tft.fillScreen(TFT_RED);
+//   tft.setTextColor(TFT_WHITE, TFT_RED);
+//   tft.setTextSize(4);
+//   tft.setCursor(20, 100);
+//   tft.print("BOTAO DE EMERGENCIA ACIONADO!");
+//   delay(200);
+//   emergencyStop();
+// }
+
 // void setup() {
 //   Serial.begin(115200);
 //   pinMode(BUZZER_PIN, OUTPUT);
-//   pinMode(BUTTON_PIN, INPUT);
+//   pinMode(BUTTON_PIN, INPUT_PULLUP);
+//   pinMode(BUTTON_EMERGENCY, INPUT_PULLUP); // Botão de emergência
 //   servo1.attach(servoPin);
 //   SPIFFS.begin(true);
 
@@ -187,7 +221,9 @@
 
 //   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
 //     req->send(SPIFFS, "/index.html", "text/html");
-//   });
+//   });server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *req){
+//   req->send(SPIFFS, "/style.css", "text/css");
+// });
 
 //   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
 //     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
@@ -218,14 +254,13 @@
 //   server.begin();
 // }
 
-// bool teste = false;
+// bool teste = false; // Variável de teste para controle de fluxo
 
 // void loop() {
 //   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
 //     delay(200);
 //     perguntaAtual = "Como você se sente para estudar?";
 //     esperandoResposta = true;
-//     //mostrarPerguntaTFT(perguntaAtual);
 //     teste = true;
 //   }
 
@@ -256,13 +291,13 @@
 //       if (emTrabalho) {
 //         playWorkEndTone();
 //         emTrabalho = false;
-//         tempoRestante = duracaoPausa;
+//         tempoRestante = duracaoPausa * 60;
 //       } else {
 //         playBreakEndTone();
 //         cicloFinalizado = true;
 //         if (num_ciclos > 1) {
 //           emTrabalho = true;
-//           tempoRestante = duracaoFoco;
+//           tempoRestante = duracaoFoco * 60;
 //         }
 //         num_ciclos--;
 //       }
@@ -295,4 +330,54 @@
 //       girarServoFim();
 //     }
 //   }
+
+//     static bool lastEmergencyState = HIGH;
+//     bool currentEmergencyState = digitalRead(BUTTON_EMERGENCY);
+
+//     if (lastEmergencyState == HIGH && currentEmergencyState == LOW) {
+//         contEmergency++;
+//         Serial.println(contEmergency);
+//         if (contEmergency == 10) {
+//             Serial.println("Botão de emergência acionado!");
+//             screenEmergency();
+//             contEmergency = 0; // opcional: zera o contador após acionar
+//         }
+//     }
+//     lastEmergencyState = currentEmergencyState;
 // }
+
+
+// // #include <Arduino.h>
+// // #include <TFT_eSPI.h>
+// // //Inicialização Display
+// // TFT_eSPI d = TFT_eSPI();
+// // TFT_eSprite ball = TFT_eSprite(&d);
+
+// // void setup(){
+// //   d.init();
+// //   d.setRotation(2);
+// //   d.fillScreen(TFT_BLACK);
+
+// //   ball.setColorDepth(8);
+// //   //Cria a Sprite um pouco maior do que o objeto que será desenhado dentro da Sprite
+// //   ball.createSprite(40, 40); 
+// // }
+
+// // int x = 0;
+// // int y = 0;
+
+// // void loop(){
+// //   //img.fillCircle(20, 20, 15,TFT_BLACK); //Também funcionou. Não vi diferença do fillSprite abaixo.
+// //   //Apaga o conteúdo da sprite para não gerar o "rastro" e ficar só o movimento do objeto
+// //   ball.fillSprite(TFT_BLACK);
+// //   x=x+1;
+// //   if(x>480){
+// //     x=0;
+// //   }
+// //   ball.fillCircle(20, 20, 15, TFT_RED); //estatico, não mexe mais
+
+// //   //Movimenta a sprite toda, e não o objeto dentro da sprite
+// //   ball.pushSprite(x, y);
+  
+
+// // }

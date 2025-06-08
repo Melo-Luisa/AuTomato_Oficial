@@ -25,8 +25,8 @@
         const foco = document.getElementById("foco").value;
         const pausa = document.getElementById("pausa").value;
         // Converter minutos para segundos
-        const focoSeg = foco * 60;
-        const pausaSeg = pausa * 60;
+        const focoSeg = foco;
+        const pausaSeg = pausa ;
         fetch("/config", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
