@@ -1,69 +1,66 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>AuTomato</title>
-    <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    <h1>Pomodoro em andamento...</h1>
-    <p id="status">Status: Aguardando início...</p>
-
-    <form onsubmit="enviarConfiguracao(); return false;">
-      <label>Tempo de trabalho (min): <input type="number" id="foco" value="25"></label><br>
-      <label>Tempo de pausa (min): <input type="number" id="pausa" value="5"></label><br>
-      <button type="submit">Atualizar Ciclos</button>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <title>Conectar Wi-Fi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="style.css" rel="stylesheet"/>
+</head>
+<body>
+  <header>
+    <h1>AuTomato</h1>
+    <p>Conecte-se ao Wi-Fi para começar o Pomodoro 🍅</p>
+  </header>
+  <main>
+    <form id="wifi-form" autocomplete="off" novalidate>
+      <label for="ssid" class="sr-only">SSID</label>
+      <input
+        id="ssid"
+        name="ssid"
+        placeholder="SSID"
+        required
+        type="text"
+        autocomplete="off"
+        aria-label="Nome da rede Wi-Fi"
+      />
+      <br/>
+      <label for="password" class="sr-only">Senha</label>
+      <input
+        id="password"
+        name="password"
+        placeholder="Senha"
+        required
+        type="password"
+        autocomplete="new-password"
+        aria-label="Senha do Wi-Fi"
+      />
+      <br/>
+      <button type="submit" id="connect-btn">Conectar</button>
+      <button type="button" id="skip-btn">Continuar sem conectar</button>
+      <p class="offline-tip">Caso não consiga conectar, use o botão acima para seguir direto para o questionário.</p>
     </form>
-
-    <div id="pesquisa" style="display:none;">
-      <p id="pergunta"></p>
-      <input type="text" id="resposta">
-      <button onclick="enviarResposta()">Enviar</button>
-    </div>
-
-    <script>
-      function enviarConfiguracao() {
-        const foco = document.getElementById("foco").value;
-        const pausa = document.getElementById("pausa").value;
-        // Converter minutos para segundos
-        const focoSeg = foco;
-        const pausaSeg = pausa ;
-        fetch("/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `foco=${focoSeg}&pausa=${pausaSeg}`
-        }).then(res => {
-          if (res.ok) alert("Ciclos atualizados!");
-        });
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <footer>
+    <small>By Giovanna, Giulia, Luisa &amp; Luigi</small>
+  </footer>
+  <script>
+    // Acessibilidade: Oculta label visual, mas mantém para leitores de tela
+    const style = document.createElement('style');
+    style.innerHTML = `
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0,0,0,0);
+        border: 0;
       }
-
-      function exibirPergunta(pergunta) {
-        document.getElementById("pergunta").innerText = pergunta;
-        document.getElementById("pesquisa").style.display = "block";
-      }
-
-      function enviarResposta() {
-        const resp = document.getElementById("resposta").value;
-        fetch("/resposta", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `resposta=${resp}`
-        }).then(res => {
-          if (res.ok) {
-            document.getElementById("pesquisa").style.display = "none";
-          }
-        });
-      }
-
-      setInterval(() => {
-        fetch("/status")
-          .then(res => res.json())
-          .then(data => {
-            document.getElementById("status").innerHTML = data.emTrabalho ? "Status: Trabalho" : "Status: Pausa";
-            if (data.pergunta) {
-              exibirPergunta(data.pergunta);
-            }
-          });
-      }, 2000);
-    </script>
-  </body>
+    `;
+    document.head.appendChild(style);
+  </script>
+  <script src="js/wifi.js"></script>
+</body>
 </html>

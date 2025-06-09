@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <title>Questionário Final</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="style.css" rel="stylesheet"/>
+</head>
+<body>
+  <header>
+    <h1>AuTomato</h1>
+    <p>Uma abordagem formativa que une o método Pomodoro à reflexão sobre foco, motivação e produtividade.</p>
+  </header>
+  <main>
+    <h1>Depois do Pomodoro</h1>
+    <form id="pos-form" autocomplete="off" novalidate>
+      <label for="focoFinal">Como está seu foco agora?</label>
+      <input
+        id="focoFinal"
+        name="focoFinal"
+        required
+        type="text"
+        autocomplete="off"
+        aria-label="Como está seu foco agora?"
+      />
+
+      <label for="comentarios">Comentários</label>
+      <textarea
+        id="comentarios"
+        name="comentarios"
+        autocomplete="off"
+        aria-label="Comentários"
+      ></textarea>
+
+      <h2>Avalie o progresso das tarefas realizadas</h2>
+      <div class="tasks">
+        <label for="task1">Tarefa 1: <span id="val1">0</span>%</label>
+        <input id="task1" name="task1" type="range" min="0" max="100" value="0" oninput="val1.innerText = this.value" aria-label="Progresso da Tarefa 1"/>
+        <label for="task2">Tarefa 2: <span id="val2">0</span>%</label>
+        <input id="task2" name="task2" type="range" min="0" max="100" value="0" oninput="val2.innerText = this.value" aria-label="Progresso da Tarefa 2"/>
+        <label for="task3">Tarefa 3: <span id="val3">0</span>%</label>
+        <input id="task3" name="task3" type="range" min="0" max="100" value="0" oninput="val3.innerText = this.value" aria-label="Progresso da Tarefa 3"/>
+        <label for="task4">Tarefa 4: <span id="val4">0</span>%</label>
+        <input id="task4" name="task4" type="range" min="0" max="100" value="0" oninput="val4.innerText = this.value" aria-label="Progresso da Tarefa 4"/>
+        <label for="task5">Tarefa 5: <span id="val5">0</span>%</label>
+        <input id="task5" name="task5" type="range" min="0" max="100" value="0" oninput="val5.innerText = this.value" aria-label="Progresso da Tarefa 5"/>
+        <label for="task6">Tarefa 6: <span id="val6">0</span>%</label>
+        <input id="task6" name="task6" type="range" min="0" max="100" value="0" oninput="val6.innerText = this.value" aria-label="Progresso da Tarefa 6"/>
+        <label for="task7">Tarefa 7: <span id="val7">0</span>%</label>
+        <input id="task7" name="task7" type="range" min="0" max="100" value="0" oninput="val7.innerText = this.value" aria-label="Progresso da Tarefa 7"/>
+        <label for="task8">Tarefa 8: <span id="val8">0</span>%</label>
+        <input id="task8" name="task8" type="range" min="0" max="100" value="0" oninput="val8.innerText = this.value" aria-label="Progresso da Tarefa 8"/>
+      </div>
+      <button type="submit">Enviar Dados</button>
+    </form>
+  </main>
+  <footer>
+    <small>By Giovanna, Giulia, Luisa &amp; Luigi</small    >
+  </footer>
+  <script>
+    // Previne envio padrão para manipulação customizada no JS
+    document.getElementById('pos-form').addEventListener('submit', e => e.preventDefault());
+  </script>
+  <script src="js/pos.js"></script>
+</body>
+</html>

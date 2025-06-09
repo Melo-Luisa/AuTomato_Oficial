@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <title>Questionário Inicial</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="style.css" rel="stylesheet"/>
+</head>
+<body>
+  <header>
+    <h1>AuTomato</h1>
+    <p>Uma abordagem formativa que une o método Pomodoro à reflexão sobre foco, motivação e produtividade.</p>
+  </header>
+  <main>
+    <h1>Antes de começar</h1>
+    <form id="pre-form" autocomplete="off" novalidate>
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Nenhum</th>
+            <th>Bem pouco</th>
+            <th>Mais ou menos</th>
+            <th>Em grande medida</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Quão cansado(a) você se sente agora?</td>
+            <td><input name="fatigue" required type="radio" value="1" aria-label="Nenhum cansaço"/></td>
+            <td><input name="fatigue" type="radio" value="2" aria-label="Bem pouco cansaço"/></td>
+            <td><input name="fatigue" type="radio" value="3" aria-label="Mais ou menos cansado"/></td>
+            <td><input name="fatigue" type="radio" value="4" aria-label="Muito cansado"/></td>
+          </tr>
+          <tr>
+            <td>Quão motivado(a) você se sente agora?</td>
+            <td><input name="motivation" required type="radio" value="1" aria-label="Nenhuma motivação"/></td>
+            <td><input name="motivation" type="radio" value="2" aria-label="Bem pouca motivação"/></td>
+            <td><input name="motivation" type="radio" value="3" aria-label="Mais ou menos motivado"/></td>
+            <td><input name="motivation" type="radio" value="4" aria-label="Muito motivado"/></td>
+          </tr>
+          <tr>
+            <td>Quão produtivo(a) você se sente agora?</td>
+            <td><input name="productivity" required type="radio" value="1" aria-label="Nada produtivo"/></td>
+            <td><input name="productivity" type="radio" value="2" aria-label="Bem pouco produtivo"/></td>
+            <td><input name="productivity" type="radio" value="3" aria-label="Mais ou menos produtivo"/></td>
+            <td><input name="productivity" type="radio" value="4" aria-label="Muito produtivo"/></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="button-row">
+        <button type="submit" id="start-pomodoro-btn">Enviar e iniciar Pomodoro</button>
+        <button type="button" id="send-only-btn">Enviar sem iniciar</button>
+      </div>
+    </form>
+  </main>
+  <footer>
+    <small>By Giovanna, Giulia, Luisa &amp; Luigi</small>
+  </footer>
+  <script>
+    // Previne envio padrão do formulário para JS customizado
+    document.getElementById('pre-form').addEventListener('submit', e => e.preventDefault());
+  </script>
+  <script src="js/pre.js"></script>
+</body>
+</html>
