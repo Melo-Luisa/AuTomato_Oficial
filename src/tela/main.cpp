@@ -8,25 +8,24 @@
 #include <ESP32Servo.h>
 #include <FS.h>
 #include <SPIFFS.h>
-#include "respostas.json"
-#include <ArduinoJson.h>
+#include <ArduinoJson.h> // Restaurado
 
 #define BUZZER_PIN 13
 #define BUTTON_PIN 36
-#define BUTTON_EMERGENCY 39
+#define BUTTON_EMERGENCY 36
 #define BUZZER_CHANNEL 6
 static const int servoPin = 5;
 
 Servo servo1;
 
 AsyncWebServer server(80);
-const char* ssid = "Morena branca";
-const char* password = "jujuba25";
+const char* ssid = "Redmi Note 14";
+const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
 
 uint32_t lastSecond = 0;
-int duracaoFoco = 25 * 60;
-int duracaoPausa = 5 * 60;
+int duracaoFoco = 25;
+int duracaoPausa = 5;
 int tempoRestante = duracaoFoco;
 int num_ciclos = 1;
 int contEmergency = 0;
@@ -48,11 +47,14 @@ void salvarResposta(const String& pergunta, const String& resposta) {
   JsonDocument doc;
   doc["pergunta"] = pergunta;
   doc["resposta"] = resposta;
-  fs::File file = SPIFFS.open("/respostas.json", FILE_APPEND);
+  fs::File file = SPIFFS.open("/respostas.json", FILE_APPEND); // Restaurado para .json
   if (file) {
-    serializeJson(doc, file);
+    serializeJson(doc, file); // Lógica JSON restaurada
     file.println();
     file.close();
+    Serial.println("Resposta salva em respostas.json"); // Mensagem atualizada
+  } else {
+    Serial.println("Erro ao abrir o arquivo respostas.json para escrita");
   }
 }
 
@@ -122,6 +124,7 @@ void atualizarTela() {
 void girarServoInicio() {
   for (int pos = 0; pos <= 180; pos++) {
     servo1.write(pos);
+    Serial.println(pos);
     delay(15);
   }
 }
@@ -129,6 +132,7 @@ void girarServoInicio() {
 void girarServoFim() {
   for (int pos = 180; pos >= 0; pos--) {
     servo1.write(pos);
+    Serial.println(pos);
     delay(15);
   }
 }
@@ -141,6 +145,7 @@ void emergencyStop() {
   somTocado = false;
   cicloFinalizado = false;
   esperandoResposta = false;
+  girarServoFim();
   atualizarTela();
 }
 
@@ -156,7 +161,7 @@ void screenEmergency() {
 }
 
 void pomodoroBotaoIniciar() {
-  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == HIGH) {
+  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == LOW) {
     delay(200);
     perguntaAtual = "Como voce se sente para estudar?";
     esperandoResposta = true;
@@ -166,7 +171,7 @@ void pomodoroBotaoIniciar() {
 
 void pomodoroIniciar() {
   if (!pomodoroIniciado && iniciarPomodoro_aux) {
-    girarServoInicio();
+    
     playWorkEndTone();
     tft.fillScreen(TFT_WHITE);
     tft.setTextColor(TFT_BLACK, TFT_WHITE);
@@ -175,6 +180,8 @@ void pomodoroIniciar() {
     tft.print("Pomodoro configuravel");
     pomodoroIniciado = true;
     iniciarPomodoro_aux = false;
+    Serial.println("Entrou em pomodoroIniciar");
+    girarServoInicio();
     lastSecond = millis();
   }
 }
@@ -236,7 +243,7 @@ void pomodoroEmergencia() {
   bool currentState = digitalRead(BUTTON_EMERGENCY);
   unsigned long now = millis();
 
-  if (lastEmergencyState == HIGH && currentState == LOW) {
+  if (lastEmergencyState == LOW && currentState == HIGH) {
     if (now - lastEmergencyClick > 5000) {
       contEmergency = 0; // Reset se passou mais de 5 segundos entre cliques
     }
@@ -310,8 +317,8 @@ void setup() {
 
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
-      duracaoFoco = req->getParam("foco", true)->value().toInt() * 60;
-      duracaoPausa = req->getParam("pausa", true)->value().toInt() * 60;
+      duracaoFoco = req->getParam("foco", true)->value().toInt();
+      duracaoPausa = req->getParam("pausa", true)->value().toInt();
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
       req->send(200, "text/plain", "Ciclos atualizados");
     } else req->send(400, "text/plain", "Parâmetros inválidos");
@@ -324,6 +331,22 @@ void setup() {
       esperandoResposta = false;
       req->send(200, "text/plain", "Recebido");
     }
+  });
+
+  // Nova rota para visualizar o arquivo respostas.json
+  server.on("/getrespostas", HTTP_GET, [](AsyncWebServerRequest *req){
+    fs::File file = SPIFFS.open("/respostas.json", FILE_READ);
+    if (!file || file.isDirectory()) {
+      Serial.println("Falha ao abrir respostas.json para leitura");
+      req->send(404, "text/plain", "Arquivo nao encontrado");
+      return;
+    }
+    String fileContent = "";
+    while(file.available()){
+      fileContent += (char)file.read();
+    }
+    file.close();
+    req->send(200, "application/json", fileContent);
   });
 
   server.begin();
