@@ -65,7 +65,7 @@ void setupCaptivePortalRoutes() {
 // Função para iniciar o ESP32 como Access Point (AP), criando a rede "AuTomato"
 
 void startAccessPoint() {
-  WiFi.softAP("AuTomato", "estudante");                    // Cria rede Wi-Fi com nome e senha fixos
+  WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
   dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());         // Redireciona todo DNS para o próprio ESP32
 
   // Rota principal: serve a página de configuração de Wi-Fi
@@ -131,7 +131,7 @@ void startAccessPoint() {
   });
 
   // Arquivos estáticos (css, js, html) do SPIFFS, padrão = index.html
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("/index.html");
 
   // Qualquer rota não encontrada redireciona para index.html (útil para SPA)
   server.onNotFound([](AsyncWebServerRequest *request){
@@ -141,7 +141,7 @@ void startAccessPoint() {
   // Configura as rotas do portal cativo
   setupCaptivePortalRoutes();
 
-  //server.begin();
+  server.begin();
   
 }
 
@@ -167,7 +167,7 @@ void startStationMode() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nConectado com sucesso!");
     // Serve o site principal (ex: pre.html) para quem acessa o ESP32 pela rede
-    server.serveStatic("/", SPIFFS, "/").setDefaultFile("pre.html");
+    server.serveStatic("/", SPIFFS, "/").setDefaultFile("/index.html");
     server.onNotFound([](AsyncWebServerRequest *request){
       request->send(SPIFFS, "/pre.html", "text/html");
     });
