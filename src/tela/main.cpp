@@ -441,13 +441,6 @@ void setup() {
     startAccessPoint();
   }
 
-
-//   WiFi.begin(ssid, password);
-//   while (WiFi.status() != WL_CONNECTED) {
-//     delay(500);
-//     Serial.print(".");
-//   }
-//   Serial.println("\nWiFi conectado");
   Serial.println(WiFi.localIP());
 
   String ipStr = "IP: " + WiFi.localIP().toString();
@@ -507,12 +500,7 @@ void setup() {
   });
 
 
-//   server.begin();
-//   Serial.println(WiFi.softAPIP());          // Mostra o IP local do AP (geralmente 192.168.4.1)
-//   Serial.println(WiFi.softAPmacAddress());
-//   Serial.println("Modo Access Point iniciado. Conecte-se à rede AuTomato.");
-//   Serial.println("Acesse http://" + WiFi.softAPIP().toString() + " para configurar o Wi-Fi.");
-  
+
 }
 
 void loop() {
