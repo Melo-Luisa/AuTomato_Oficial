@@ -14,13 +14,9 @@
       <button type="submit">Atualizar Ciclos</button>
     </form>
 
-    <!-- <div id="pesquisa" style="display:none;">
-      <p id="pergunta"></p>
-      <input type="text" id="resposta">
-      <button onclick="enviarResposta()">Enviar</button>
-    </div> -->
-    <div id="pergunta" style="font-weight:bold; margin-bottom:10px;"></div>
-    <form id="pre-form" style="display:none;" autocomplete="off" novalidate>
+    
+    <div id="pergunta" style="font-weight:bold; margin-bottom:10px;">oiiii</div>
+    <form id="pre-form" style="display:block;" autocomplete="off" novalidate>
       <table>
         <thead>
           <tr>
@@ -55,7 +51,7 @@
           </tr>
         </tbody>
       </table>
-      <button type="button" onclick="enviarResposta()">Enviar</button>
+      <button type="submit" onclick="enviarResposta()">Enviar novo</button>
     </form>
 
     <script>
@@ -75,8 +71,12 @@
       }
 
       function exibirPergunta(pergunta) {
-        document.getElementById("pergunta").innerText = pergunta;
-        document.getElementById("pre-form").style.display = "block";
+        if (pergunta == "formulario") {
+          document.getElementById("pre-form").style.display = "block";
+        } else {
+          document.getElementById("pre-form").style.display = "none";
+        }
+        // document.getElementById("pergunta").innerText = pergunta !== "formulario" ? pergunta : "";
       }
 
       function enviarResposta() {

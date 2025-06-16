@@ -299,7 +299,7 @@ void screenEmergency() {
 void pomodoroBotaoIniciar() {
   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == LOW) {
     delay(200);
-    perguntaAtual = "Como voce se sente para estudar?";
+    perguntaAtual = " ";
     esperandoResposta = true;
     iniciarPomodoro_aux = true;
   }
@@ -449,7 +449,7 @@ void setup() {
   tft.setCursor(240 - tft.textWidth((char*)ipStr.c_str()) - 5, 230);
   tft.print(ipStr);
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
+  server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send(SPIFFS, "/index.html", "text/html");
   });
 
@@ -457,14 +457,17 @@ void setup() {
     req->send(SPIFFS, "/style.css", "text/css");
   });
 
+  //salvar no json
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
-    String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
-                  String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false") +
-                  String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false") +
-                  String(",\"pergunta\":\"") + (esperandoResposta ? perguntaAtual : "") + String("\"}");
-    req->send(200, "application/json", json);
+     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
+              String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false") +
+              String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false") +
+              String(",\"pergunta\":\"") + (esperandoResposta ? "formulario" : "erro") + String("\"}");
+      req->send(200, "application/json", json);
   });
+  esperandoResposta = true;
 
+  //mudar o temporizador - tempo e pausa
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
       duracaoFoco = req->getParam("foco", true)->value().toInt();
@@ -474,12 +477,17 @@ void setup() {
     } else req->send(400, "text/plain", "Parâmetros inválidos");
   });
 
+  //pegar resposta 
   server.on("/resposta", HTTP_POST, [](AsyncWebServerRequest *req){
-    if (req->hasParam("resposta", true)) {
-      String resposta = req->getParam("resposta", true)->value();
+    if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
+      String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
+                        ", Motivação: " + req->getParam("motivation", true)->value() +
+                        ", Produtividade: " + req->getParam("productivity", true)->value();
       salvarResposta(perguntaAtual, resposta);
       esperandoResposta = false;
       req->send(200, "text/plain", "Recebido");
+    } else {
+      req->send(400, "text/plain", "Parâmetros inválidos");
     }
   });
 
@@ -498,7 +506,7 @@ void setup() {
     file.close();
     req->send(200, "application/json", fileContent);
   });
-
+  //esperandoResposta = true;
 
 
 }
