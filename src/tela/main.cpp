@@ -17,6 +17,9 @@
 #define BUTTON_EMERGENCY 36
 #define BUZZER_CHANNEL 6
 static const int servoPin = 5;
+const int DIR = 33;
+const int STEP = 32;
+const int steps_per_rev = 200; 
 
 Servo servo1;
 Preferences preferences; // Para armazenar SSID e senha de Wi-Fi de forma persistente
@@ -169,7 +172,7 @@ void startStationMode() {
     // Serve o site principal (ex: pre.html) para quem acessa o ESP32 pela rede
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("/index.html");
     server.onNotFound([](AsyncWebServerRequest *request){
-      request->send(SPIFFS, "/pre.html", "text/html");
+      request->send(SPIFFS, "/index.html", "text/html");
     });
     server.begin();
   } else {
@@ -257,10 +260,12 @@ void atualizarTela() {
   }
 }
 
+
+//FUNÇÕES SERVO MOTOR
 void girarServoInicio() {
   for (int pos = 0; pos <= 180; pos++) {
     servo1.write(pos);
-    Serial.println(pos);
+    //Serial.println(pos);
     delay(15);
   }
 }
@@ -268,9 +273,20 @@ void girarServoInicio() {
 void girarServoFim() {
   for (int pos = 180; pos >= 0; pos--) {
     servo1.write(pos);
-    Serial.println(pos);
+    //Serial.println(pos);
     delay(15);
   }
+}
+
+//FUNÇÕES MOTOR DE PASSO
+void stepMotor(){
+  for(int i = 0; i<steps_per_rev; i++){
+    digitalWrite(STEP, HIGH);
+    delayMicroseconds(2000);
+    digitalWrite(STEP, LOW);
+    delayMicroseconds(2000);
+  }
+  delay(1000); 
 }
 
 void emergencyStop() {
@@ -318,6 +334,7 @@ void pomodoroIniciar() {
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
     girarServoInicio();
+    stepMotor();
     lastSecond = millis();
   }
 }
@@ -358,7 +375,7 @@ void pomodoroFinalizar() {
       somTocado = false;
       cicloFinalizado = true;
       playWorkEndTone();
-      perguntaAtual = "Como voce se sente apos estudar?";
+      perguntaAtual = "teste";
       esperandoResposta = true;
     }
 
@@ -441,7 +458,13 @@ void setup() {
     startAccessPoint();
   }
 
+  //Serial.println(WiFi.localIP());
+
+  //IP e MAC do ESP32
+  Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+  Serial.print("MAC: ");
+  Serial.println(WiFi.macAddress());
 
   String ipStr = "IP: " + WiFi.localIP().toString();
   tft.setTextSize(2);
@@ -459,13 +482,13 @@ void setup() {
 
   //salvar no json
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
-     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
-              String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false") +
-              String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false") +
-              String(",\"pergunta\":\"") + (esperandoResposta ? "formulario" : "erro") + String("\"}");
-      req->send(200, "application/json", json);
+    String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
+                  String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false") +
+                  String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false") +
+                  String(",\"pergunta\":\"") + (esperandoResposta ? perguntaAtual : "") + String("\"}");
+    req->send(200, "application/json", json);
   });
-  esperandoResposta = true;
+  //esperandoResposta = true;
 
   //mudar o temporizador - tempo e pausa
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
