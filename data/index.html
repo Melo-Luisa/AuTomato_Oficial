@@ -3,6 +3,7 @@
   <head>
     <title>AuTomato</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
   </head>
   <body>
     <h1>Pomodoro em andamento...</h1>
@@ -14,9 +15,9 @@
       <button type="submit">Atualizar Ciclos</button>
     </form>
 
-    
-    <div id="pergunta" style="font-weight:bold; margin-bottom:10px;">oiiii</div>
-    <form id="pre-form" style="display:block;" autocomplete="off" novalidate>
+    <!-- FORMULÁRIO DE INCIO -->
+    <div id="pergunta" style="font-weight:bold; margin-bottom:10px;"></div>
+   <form id="pre-form" onsubmit="enviarRespostaPre(event); return false;" autocomplete="off" novalidate style="display: none;">
       <table>
         <thead>
           <tr>
@@ -53,69 +54,114 @@
       </table>
       <button type="submit" onclick="enviarResposta()">Enviar novo</button>
     </form>
+    <!-- FORMULÁRIO FINAL -->
+     <form id="pos-form" style="display: none;" autocomplete="off" novalidate  onsubmit="enviarRespostaPos(event); return false;">
+      <label for="focoFinal">Como está seu foco agora?</label>
+      <input
+        id="focoFinal"
+        name="focoFinal"
+        required
+        type="text"
+        autocomplete="off"
+        aria-label="Como está seu foco agora?"
+      />
+      <br>
 
-    <script>
-      function enviarConfiguracao() {
-        const foco = document.getElementById("foco").value;
-        const pausa = document.getElementById("pausa").value;
-        // Converter minutos para segundos
-        const focoSeg = foco;
-        const pausaSeg = pausa ;
-        fetch("/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: `foco=${focoSeg}&pausa=${pausaSeg}`
-        }).then(res => {
-          if (res.ok) alert("Ciclos atualizados!");
-        });
+      <label for="comentarios">Comentários</label>
+      <textarea
+        id="comentarios"
+        name="comentarios"
+        autocomplete="off"
+        aria-label="Comentários"
+      ></textarea>
+
+      <h2>Avalie o progresso das tarefas realizadas</h2>
+      <div class="tasks">
+        <label for="task1">Tarefas: <span id="val1">0</span>%</label>
+        <input id="task1" name="task1" type="range" min="0" max="100" value="0" oninput="val1.innerText = this.value" aria-label="Progresso da Tarefa 1"/>
+      </div>
+      <button type="submit" onclick="enviarResposta()">Enviar Dados</button>
+    </form>
+
+<script>
+  function enviarConfiguracao() {
+    const foco = document.getElementById("foco").value;
+    const pausa = document.getElementById("pausa").value;
+    fetch("/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `foco=${foco}&pausa=${pausa}`
+    }).then(res => {
+      if (res.ok) alert("Ciclos atualizados!");
+    });
+  }
+
+  function enviarRespostaPre(event) {
+    event.preventDefault();
+    const fatigue = document.querySelector('input[name="fatigue"]:checked');
+    const motivation = document.querySelector('input[name="motivation"]:checked');
+    const productivity = document.querySelector('input[name="productivity"]:checked');
+
+    if (!fatigue || !motivation || !productivity) {
+      alert("Por favor, responda todas as perguntas.");
+      return;
+    }
+
+    const body = `fatigue=${fatigue.value}&motivation=${motivation.value}&productivity=${productivity.value}`;
+
+    fetch("/resposta", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body
+    }).then(res => {
+      if (res.ok) {
+        document.getElementById("pre-form").style.display = "none";
+        alert("Resposta enviada!");
       }
+    });
+  }
 
-      function exibirPergunta(pergunta) {
-        if (pergunta == "formulario") {
+  function enviarRespostaPos(event) {
+    event.preventDefault();
+    const focoFinal = document.getElementById("focoFinal").value;
+    const comentarios = document.getElementById("comentarios").value;
+
+    const progresso = `task1=${document.getElementById("task1").value}`;
+
+    const body = `focoFinal=${encodeURIComponent(focoFinal)}&comentarios=${encodeURIComponent(comentarios)}&${progresso}`;
+
+    fetch("/resposta", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body
+    }).then(res => {
+      if (res.ok) {
+        document.getElementById("pos-form").style.display = "none";
+        alert("Resposta final enviada!");
+      }
+    });
+  }
+
+  setInterval(() => {
+    fetch("/status")
+      .then(response => response.json())
+      .then(data => {
+        if (data.pergunta === "Pré Formulario") {
           document.getElementById("pre-form").style.display = "block";
+          document.getElementById("pos-form").style.display = "none";
+          document.getElementById("pergunta").innerText = "Antes de iniciar:";
+        } else if (data.pergunta === "Pós Formulario") {
+          document.getElementById("pre-form").style.display = "none";
+          document.getElementById("pos-form").style.display = "block";
+          document.getElementById("pergunta").innerText = "Após finalização:";
         } else {
           document.getElementById("pre-form").style.display = "none";
+          document.getElementById("pos-form").style.display = "none";
+          document.getElementById("pergunta").innerText = "";
         }
-        // document.getElementById("pergunta").innerText = pergunta !== "formulario" ? pergunta : "";
-      }
+      });
+  }, 2000);
+</script>
 
-      function enviarResposta() {
-        // Coleta os valores selecionados dos radios do pre-form
-        const fatigue = document.querySelector('input[name="fatigue"]:checked');
-        const motivation = document.querySelector('input[name="motivation"]:checked');
-        const productivity = document.querySelector('input[name="productivity"]:checked');
-
-        // Validação simples
-        if (!fatigue || !motivation || !productivity) {
-          alert("Por favor, responda todas as perguntas.");
-          return;
-        }
-
-        // Monta o corpo da requisição
-        const body = `fatigue=${fatigue.value}&motivation=${motivation.value}&productivity=${productivity.value}`;
-
-        fetch("/resposta", {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: body
-        }).then(res => {
-          if (res.ok) {
-            document.getElementById("pre-form").style.display = "none";
-            alert("Resposta enviada!");
-          }
-        });
-      }
-
-      setInterval(() => {
-        fetch("/status")
-          .then(res => res.json())
-          .then(data => {
-            document.getElementById("status").innerHTML = data.emTrabalho ? "Status: Trabalho" : "Status: Pausa";
-            if (data.pergunta) {
-              exibirPergunta(data.pergunta);
-            }
-          });
-      }, 2000);
-    </script>
   </body>
 </html>

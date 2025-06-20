@@ -30,6 +30,7 @@ AsyncWebServer server(80);
 // const char* password = "giugiu24";
 TFT_eSPI tft = TFT_eSPI();
 
+
 uint32_t lastSecond = 0;
 int duracaoFoco = 25;
 int duracaoPausa = 5;
@@ -134,7 +135,7 @@ void startAccessPoint() {
   });
 
   // Arquivos estáticos (css, js, html) do SPIFFS, padrão = index.html
-  server.serveStatic("/", SPIFFS, "/").setDefaultFile("/index.html");
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
   // Qualquer rota não encontrada redireciona para index.html (útil para SPA)
   server.onNotFound([](AsyncWebServerRequest *request){
@@ -186,14 +187,16 @@ void salvarResposta(const String& pergunta, const String& resposta) {
   JsonDocument doc;
   doc["pergunta"] = pergunta;
   doc["resposta"] = resposta;
-  fs::File file = SPIFFS.open("/respostas.json", FILE_APPEND); // Restaurado para .json
+  doc["timestamp"] = millis(); // ou algum RTC se tiver
+
+  fs::File file = SPIFFS.open("/respostas.json", FILE_APPEND);
   if (file) {
-    serializeJson(doc, file); // Lógica JSON restaurada
+    serializeJson(doc, file);
     file.println();
     file.close();
-    Serial.println("Resposta salva em respostas.json"); // Mensagem atualizada
+    Serial.println("Resposta salva com sucesso");
   } else {
-    Serial.println("Erro ao abrir o arquivo respostas.json para escrita");
+    Serial.println("Erro ao abrir arquivo para salvar");
   }
 }
 
@@ -225,23 +228,25 @@ void mostrarPerguntaTFT(const String& pergunta) {
   tft.fillScreen(TFT_WHITE);
   tft.setTextColor(TFT_YELLOW, TFT_WHITE);
   tft.setTextSize(2);
-  int16_t x = (tft.width() - tft.textWidth((char*)pergunta.c_str())) / 2;
+  int16_t x = (TFT_WIDTH - tft.textWidth((char*)pergunta.c_str())) / 2;
   tft.setCursor(x, 50);
   tft.println(pergunta);
 }
 
 void atualizarTela() {
   if (esperandoResposta) return;
-  uint16_t bgColor = emTrabalho ? TFT_GREEN : TFT_SKYBLUE;
+  uint16_t bgColor = emTrabalho ? TFT_RED : TFT_SKYBLUE;
   tft.fillScreen(TFT_WHITE);
   tft.setTextSize(2);
 
   if (!pomodoroIniciado) {
     tft.setTextColor(TFT_RED, TFT_WHITE);
-    int16_t x1 = (tft.width() - tft.textWidth("Pressione o botao")) / 2;
-    int16_t x2 = (tft.width() - tft.textWidth("para iniciar!")) / 2;
-    tft.setCursor(x1, 50); tft.print("Pressione o botao");
-    tft.setCursor(x2, 80); tft.print("para iniciar!");
+    //int16_t x1 = (TFT_WIDTH - tft.textWidth("Logar a rede")) /2;
+    //int16_t x2 = (TFT_WIDTH - tft.textWidth("para iniciar!")) /2;
+    tft.setCursor(80, 80); 
+    tft.print("Logar a rede");
+    tft.setCursor(100, 120);
+    tft.print("para iniciar!");
   } else {
     tft.setTextColor(bgColor, TFT_WHITE);
     String status = emTrabalho ? "Trabalhando..." : "Pausa...";
@@ -263,7 +268,7 @@ void atualizarTela() {
 
 //FUNÇÕES SERVO MOTOR
 void girarServoInicio() {
-  for (int pos = 0; pos <= 180; pos++) {
+  for (int pos = 0; pos <= 90; pos++) {
     servo1.write(pos);
     //Serial.println(pos);
     delay(15);
@@ -271,7 +276,7 @@ void girarServoInicio() {
 }
 
 void girarServoFim() {
-  for (int pos = 180; pos >= 0; pos--) {
+  for (int pos = 90; pos >= 0; pos--) {
     servo1.write(pos);
     //Serial.println(pos);
     delay(15);
@@ -315,7 +320,7 @@ void screenEmergency() {
 void pomodoroBotaoIniciar() {
   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == LOW) {
     delay(200);
-    perguntaAtual = " ";
+    perguntaAtual = "Pré Formulario";
     esperandoResposta = true;
     iniciarPomodoro_aux = true;
   }
@@ -328,8 +333,8 @@ void pomodoroIniciar() {
     tft.fillScreen(TFT_WHITE);
     tft.setTextColor(TFT_BLACK, TFT_WHITE);
     tft.setTextSize(2);
-    tft.setCursor(10, 10);
-    tft.print("Pomodoro configuravel");
+    tft.setCursor(50, 70);
+    tft.print("Pomodoro Iniciado!");
     pomodoroIniciado = true;
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
@@ -375,18 +380,21 @@ void pomodoroFinalizar() {
       somTocado = false;
       cicloFinalizado = true;
       playWorkEndTone();
-      perguntaAtual = "teste";
+      perguntaAtual = "Pós Formulario";
       esperandoResposta = true;
     }
 
     if (!esperandoResposta) {
       cicloFinalizado = false;
       tft.fillScreen(TFT_WHITE);
-      tft.setTextColor(TFT_YELLOW, TFT_WHITE);
-      tft.setTextSize(6);
-      int16_t xFim = (tft.width() - tft.textWidth("FIM!")) / 2;
-      tft.setCursor(xFim, 10);
-      tft.print("FIM!");
+      tft.setTextColor(TFT_RED, TFT_WHITE);
+      tft.setTextSize(2);
+      //int16_t xFim = (TFT_WIDTH - tft.textWidth("FIM!")) / 2;
+      tft.setCursor(30, 50);
+      tft.print("Obrigada por usar o Automato!");
+      tft.setCursor(50, 130);
+      tft.setTextSize(1);
+      tft.print("Giulia, Luisa, Giovana e Luigi.");
       girarServoFim();
     }
   }
@@ -416,12 +424,34 @@ void pomodoroEmergencia() {
   lastEmergencyState = currentState;
 }
 
+void abertura() {
+  tft.setCursor(50, 90, 2);
+  tft.setTextColor(TFT_RED);
+  tft.setTextSize(3);
+
+
+  String word = "AUTOMATO";
+
+  for (int i = 0; i < word.length(); i++) {
+    tft.print(word[i]);
+    delay(100);
+  }
+  delay(200);
+  tft.fillScreen(TFT_WHITE);
+
+}
+
 void setup() {
   Serial.begin(115200);
+  WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
+  Serial.println(WiFi.softAPIP());
+
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(BUTTON_EMERGENCY, INPUT_PULLUP);
   servo1.attach(servoPin);
+
+ 
 
   if (!SPIFFS.begin(true)) {
     Serial.println("Erro ao montar SPIFFS");
@@ -433,13 +463,14 @@ void setup() {
   Serial.println("Acesse http://" + WiFi.softAPIP().toString() + " para configurar o Wi-Fi.");
 
   tft.init();
-  tft.setRotation(1);
+  tft.setRotation(3);
   tft.fillScreen(TFT_WHITE);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  tft.setTextSize(2);
-  tft.setCursor(10, 10);
-  tft.print("Pomodoro configuravel");
-  delay(1000);
+  abertura();
+  // tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  // tft.setTextSize(2);
+  // tft.setCursor(10, 10);
+  // //tft.print("Pomodoro configuravel");
+  // delay(1000);
   atualizarTela();
 
 
@@ -461,16 +492,16 @@ void setup() {
   //Serial.println(WiFi.localIP());
 
   //IP e MAC do ESP32
-  Serial.print("IP: ");
-  Serial.println(WiFi.localIP());
-  Serial.print("MAC: ");
-  Serial.println(WiFi.macAddress());
+  // Serial.print("IP: ");
+  // Serial.println(WiFi.localIP());
+  // Serial.print("MAC: ");
+  // Serial.println(WiFi.macAddress());
 
   String ipStr = "IP: " + WiFi.localIP().toString();
   tft.setTextSize(2);
   tft.setTextColor(TFT_RED, TFT_WHITE);
   tft.setCursor(240 - tft.textWidth((char*)ipStr.c_str()) - 5, 230);
-  tft.print(ipStr);
+  //tft.print(ipStr);
 
   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send(SPIFFS, "/index.html", "text/html");
@@ -488,7 +519,7 @@ void setup() {
                   String(",\"pergunta\":\"") + (esperandoResposta ? perguntaAtual : "") + String("\"}");
     req->send(200, "application/json", json);
   });
-  //esperandoResposta = true;
+  esperandoResposta = true;
 
   //mudar o temporizador - tempo e pausa
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
@@ -502,17 +533,41 @@ void setup() {
 
   //pegar resposta 
   server.on("/resposta", HTTP_POST, [](AsyncWebServerRequest *req){
+  // FORMULÁRIO INICIAL (pré)
     if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
       String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
                         ", Motivação: " + req->getParam("motivation", true)->value() +
                         ", Produtividade: " + req->getParam("productivity", true)->value();
-      salvarResposta(perguntaAtual, resposta);
+      salvarResposta("Pre", resposta);
       esperandoResposta = false;
-      req->send(200, "text/plain", "Recebido");
-    } else {
-      req->send(400, "text/plain", "Parâmetros inválidos");
+      req->send(200, "text/plain", "Recebido (pré)");
+      return;
     }
+
+    // FORMULÁRIO FINAL (pós)
+    if (req->hasParam("focoFinal", true)) {
+      String focoFinal = req->getParam("focoFinal", true)->value();
+      String comentarios = req->hasParam("comentarios", true) ? req->getParam("comentarios", true)->value() : "";
+
+      String progresso = "";
+      for (int i = 1; i <= 8; i++) {
+        String nome = "task" + String(i);
+        if (req->hasParam(nome, true)) {
+          progresso += nome + ": " + req->getParam(nome, true)->value() + "% ";
+        }
+      }
+
+      String resposta = "Foco final: " + focoFinal + "\nComentários: " + comentarios + "\nProgresso: " + progresso;
+      salvarResposta("Pos", resposta);
+      esperandoResposta = false;
+      req->send(200, "text/plain", "Recebido (pós)");
+      return;
+    }
+
+    // Nenhum dado válido
+    req->send(400, "text/plain", "Parâmetros inválidos");
   });
+
 
   // Nova rota para visualizar o arquivo respostas.json
   server.on("/getrespostas", HTTP_GET, [](AsyncWebServerRequest *req){
