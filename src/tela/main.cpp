@@ -577,13 +577,29 @@ void setup() {
       req->send(404, "text/plain", "Arquivo nao encontrado");
       return;
     }
-    String fileContent = "";
+
+    String fileContent = "[\n"; // abre o array
+    bool firstLine = true;
+
     while(file.available()){
-      fileContent += (char)file.read();
+      String line = file.readStringUntil('\n');
+      line.trim(); // remove espaços e quebras extras
+
+      if (line.length() > 0) {
+        if (!firstLine) {
+          fileContent += ",\n"; // adiciona vírgula entre os objetos
+        }
+        fileContent += line;
+        firstLine = false;
+      }
     }
+
+    fileContent += "\n]"; // fecha o array
     file.close();
+
     req->send(200, "application/json", fileContent);
   });
+
   //esperandoResposta = true;
 
 
