@@ -81,6 +81,11 @@ void startAccessPoint() {
     request->send(SPIFFS, "/js/wifi.js", "text/javascript");
   });
 
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{\"pergunta\":\"" + perguntaAtual + "\"}";
+    request->send(200, "application/json", json);
+  });
+
   // Endpoint: recebe POST em /connect com JSON contendo ssid/senha (JSON por ser conectado com JS)
   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
     String body;
@@ -149,6 +154,7 @@ void startAccessPoint() {
   
 }
 
+
 // Função para conectar à rede Wi-Fi previamente salva e servir o site principal
 void startStationMode() {
   preferences.begin("wifi", true);
@@ -160,6 +166,11 @@ void startStationMode() {
 
   Serial.print("Conectando a ");
   Serial.println(ssid);
+
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{\"pergunta\":\"" + perguntaAtual + "\"}";
+    request->send(200, "application/json", json);
+  });
 
   unsigned long startAttemptTime = millis();
   // Tenta conectar por até 15 segundos
@@ -206,6 +217,18 @@ void playTone(int freq, int dur) {
   ledcWrite(BUZZER_CHANNEL, 128);
   delay(dur);
   ledcWrite(BUZZER_CHANNEL, 0);
+}
+
+void tocarToneInicializacao() {
+    ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
+    int melodia[] = { 523, 659, 784, 1047 }; // C5, E5, G5, C6
+    int duracao[] = { 150, 150, 150, 300 };  // ms
+
+    for (int i = 0; i < 4; i++) {
+        ledcWriteTone(BUZZER_CHANNEL, melodia[i]);
+        delay(duracao[i]);
+    }
+    ledcWriteTone(BUZZER_CHANNEL, 0); // Para o buzzer
 }
 
 void playWorkEndTone() {
@@ -445,6 +468,7 @@ void setup() {
   Serial.begin(115200);
   WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
   Serial.println(WiFi.softAPIP());
+  tocarToneInicializacao();
 
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
