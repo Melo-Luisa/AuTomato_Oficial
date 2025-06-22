@@ -19,7 +19,7 @@
 
     <!-- FORMULÁRIO DE INCIO -->
     <div id="pergunta" style="font-weight:bold; margin-bottom:10px;"></div>
-   <form id="pre-form" onsubmit="enviarRespostaPre(event); return false;" autocomplete="off" novalidate style="display: none;">
+    <form id="pre-form" onsubmit="enviarRespostaPre(event); return false;" autocomplete="off" novalidate style="display: block;">
       <table>
         <thead>
           <tr>
@@ -54,10 +54,10 @@
           </tr>
         </tbody>
       </table>
-      <button type="submit" onclick="enviarResposta()">Enviar novo</button>
+      <button type="submit" onclick="enviarResposta()">Enviar</button>
     </form>
     <!-- FORMULÁRIO FINAL -->
-     <form id="pos-form" style="display: none;" autocomplete="off" novalidate  onsubmit="enviarRespostaPos(event); return false;">
+     <form id="pos-form" style="display: block;" autocomplete="off" novalidate  onsubmit="enviarRespostaPos(event); return false;">
       <label for="focoFinal">Como está seu foco agora?</label>
       <input
         id="focoFinal"
@@ -77,7 +77,7 @@
         aria-label="Comentários"
       ></textarea>
 
-      <h2>Avalie o progresso das tarefas realizadas</h2>
+      <h3>Avalie o progresso das tarefas realizadas</h3>
       <div class="tasks">
         <label for="task1">Tarefas: <span id="val1">0</span>%</label>
         <input id="task1" name="task1" type="range" min="0" max="100" value="0" oninput="val1.innerText = this.value" aria-label="Progresso da Tarefa 1"/>
