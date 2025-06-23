@@ -484,7 +484,7 @@ void setup() {
   Serial.begin(115200);
   WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
   Serial.println(WiFi.softAPIP());
-  tocarToneInicializacao();
+  //tocarToneInicializacao();
 
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -569,8 +569,8 @@ void setup() {
   //mudar o temporizador - tempo e pausa
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
-      duracaoFoco = req->getParam("foco", true)->value().toInt();
-      duracaoPausa = req->getParam("pausa", true)->value().toInt();
+      duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
+      duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
       num_ciclos = req->getParam("ciclos", true)->value().toInt();//para quantos ciclos o pomodoro vai rodar
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
       req->send(200, "text/plain", "Ciclos atualizados");
