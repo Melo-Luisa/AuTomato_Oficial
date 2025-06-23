@@ -551,6 +551,11 @@ void setup() {
     req->send(SPIFFS, "/style.css", "text/css");
   });
 
+  // NOVA ROTA PARA A PÁGINA DE RESPOSTAS
+  server.on("/respostas.html", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(SPIFFS, "/respostas.html", "text/html");
+  });
+  
   //salvar no json
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +

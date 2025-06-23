@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Respostas - AuTomato</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Análise das Respostas</h1>
+    <div id="analise-container">
+        <p>Calculando médias...</p>
+    </div>
+    <a href="/" class="button-link">Voltar para o Início</a>
+
+    <script>
+        window.onload = function() {
+            fetch('/getrespostas')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('analise-container');
+                    
+                    if (!data || data.length === 0) {
+                        container.innerHTML = '<p>Nenhuma resposta salva para analisar.</p>';
+                        return;
+                    }
+
+                    let totalFadiga = 0;
+                    let totalMotivação = 0;
+                    let totalProdutividade = 0;
+                    let entradasValidas = 0;
+
+                    data.forEach(item => {
+                        // A análise só faz sentido para as respostas do formulário "Pre"
+                        if (item.pergunta === "Pre") {
+                            //Regex
+                            const fadiga = item.resposta.match(/Cansaço: (\d+)/);
+                            const motivacao = item.resposta.match(/Motivação: (\d+)/);
+                            const produtividade = item.resposta.match(/Produtividade: (\d+)/);
+
+                            // Se todos os valores foram encontrados na string
+                            if (fadiga && motivacao && produtivitidade) {
+                                totalFadiga += parseInt(fatiga[1], 10);
+                                totalMotivacao += parseInt(motivacao[1], 10);
+                                totalProdutividade += parseInt(produtividade[1], 10);
+                                entradasValidas++;
+                            }
+                        }
+                    });
+
+                    if (entradasValidas === 0) {
+                        container.innerHTML = '<p>Não há dados do formulário inicial para calcular as médias.</p>';
+                        return;
+                    }
+
+                    // Calcula as médias
+                    const avgFadiga = totalFadiga / entradasValidas;
+                    const avgMotivacao = totalMotivacao / entradasValidas;
+                    const avgProdutividade = totalProdutividade / entradasValidas;
+
+                    // Exibe os resultados
+                    container.innerHTML = `
+                        <div class="stat">
+                            <span class="stat-label">Média de Cansaço:</span>
+                            <span class="stat-value">${avgFatigue.toFixed(2)}</span>
+                            (em uma escala de 1 a 4)
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Média de Motivação:</span>
+                            <span class="stat-value">${avgMotivation.toFixed(2)}</span>
+                            (em uma escala de 1 a 4)
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Média de Produtividade:</span>
+                            <span class="stat-value">${avgProductivity.toFixed(2)}</span>
+                            (em uma escala de 1 a 4)
+                        </div>
+                        <hr>
+                        <p>Análise baseada em <strong>${entradasValidas}</strong> sessões de estudo.</p>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar ou processar respostas:', error);
+                    document.getElementById('analise-container').innerHTML = '<p>Erro ao carregar as respostas. Verifique o console para mais detalhes.</p>';
+                });
+        };
+    </script>
+</body>
+</html>
