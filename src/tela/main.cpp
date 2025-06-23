@@ -285,6 +285,22 @@ void atualizarTela() {
     int16_t xTempo = (tft.width() - tft.textWidth(tempoStr)) / 2;
     tft.setCursor(xTempo, 100);
     tft.print(tempoStr);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+
+    if (num_ciclos >= 0) {
+      String ciclosStr = "Ciclos restantes: " + String(num_ciclos);
+      int16_t xCiclos = (tft.width() - tft.textWidth(ciclosStr)) / 2;
+      tft.setCursor(xCiclos, 180);
+      tft.print(ciclosStr);
+    } 
+    
+    else {
+      String completosStr = "Ciclos completos!";
+      int16_t xCompletos = (tft.width() - tft.textWidth(completosStr)) / 2;
+      tft.setCursor(xCompletos, 180);
+      tft.print(completosStr);
+    }
   }
 }
 
