@@ -14,6 +14,7 @@
     <form onsubmit="enviarConfiguracao(); return false;">
       <label>Tempo de trabalho (min): <input type="number" id="foco" value="25"></label><br>
       <label>Tempo de pausa (min): <input type="number" id="pausa" value="5"></label><br>
+      <label>Número de ciclos: <input type="number" id="ciclos" value="4"></label><br>
       <button type="submit">Atualizar Ciclos</button>
     </form>
 
@@ -89,10 +90,11 @@
   function enviarConfiguracao() {
     const foco = document.getElementById("foco").value;
     const pausa = document.getElementById("pausa").value;
+    const ciclos = document.getElementById("ciclos").value;
     fetch("/config", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `foco=${foco}&pausa=${pausa}`
+      body: `foco=${foco}&pausa=${pausa}&ciclos=${ciclos}`
     }).then(res => {
       if (res.ok) alert("Ciclos atualizados!");
     });

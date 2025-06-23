@@ -550,6 +550,7 @@ void setup() {
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
       duracaoFoco = req->getParam("foco", true)->value().toInt();
       duracaoPausa = req->getParam("pausa", true)->value().toInt();
+      num_ciclos = req->getParam("ciclos", true)->value().toInt();//para quantos ciclos o pomodoro vai rodar
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
       req->send(200, "text/plain", "Ciclos atualizados");
     } else req->send(400, "text/plain", "Parâmetros inválidos");
