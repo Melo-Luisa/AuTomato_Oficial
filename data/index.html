@@ -19,7 +19,7 @@
 
     <!-- FORMULÁRIO DE INCIO -->
     <div id="pergunta" style="font-weight:bold; margin-bottom:10px;"></div>
-    <form id="pre-form" onsubmit="enviarRespostaPre(event); return false;" autocomplete="off" novalidate style="display: block;">
+    <form id="pre-form" onsubmit="enviarRespostaPre(event); return false;" autocomplete="off" novalidate style="display: none;">
       <table>
         <thead>
           <tr>
@@ -57,7 +57,7 @@
       <button type="submit" onclick="enviarResposta()">Enviar</button>
     </form>
     <!-- FORMULÁRIO FINAL -->
-     <form id="pos-form" style="display: block;" autocomplete="off" novalidate  onsubmit="enviarRespostaPos(event); return false;">
+     <form id="pos-form" style="display: none;" autocomplete="off" novalidate  onsubmit="enviarRespostaPos(event); return false;">
       <label for="focoFinal">Como está seu foco agora?</label>
       <input
         id="focoFinal"

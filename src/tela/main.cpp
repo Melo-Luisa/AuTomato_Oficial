@@ -290,16 +290,16 @@ void atualizarTela() {
 
 
 //FUNÇÕES SERVO MOTOR
-void girarServoInicio() {
-  for (int pos = 0; pos <= 90; pos++) {
-    servo1.write(pos);
-    //Serial.println(pos);
-    delay(15);
-  }
-}
+// void girarServoFim() {
+//   for (int pos = 0; pos <= 100; pos++) {
+//     servo1.write(pos);
+//     //Serial.println(pos);
+//     delay(15);
+//   }
+// }
 
 void girarServoFim() {
-  for (int pos = 90; pos >= 0; pos--) {
+  for (int pos = 90; pos >= 5; pos--) {
     servo1.write(pos);
     //Serial.println(pos);
     delay(15);
@@ -361,7 +361,7 @@ void pomodoroIniciar() {
     pomodoroIniciado = true;
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
-    girarServoInicio();
+    girarServoFim();
     stepMotor();
     lastSecond = millis();
   }
@@ -468,7 +468,7 @@ void setup() {
   Serial.begin(115200);
   WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
   Serial.println(WiFi.softAPIP());
-  tocarToneInicializacao();
+  // tocarToneInicializacao();
 
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
