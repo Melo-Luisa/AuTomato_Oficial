@@ -19,7 +19,7 @@
 static const int servoPin = 5;
 const int DIR = 33;
 const int STEP = 32;
-const int steps_per_rev = 200; 
+const int steps_per_rev = 3200;
 
 Servo servo1;
 Preferences preferences; // Para armazenar SSID e senha de Wi-Fi de forma persistente
@@ -48,6 +48,10 @@ bool pomodoroIniciado = false;
 bool esperandoResposta = false;
 bool iniciarPomodoro_aux = false;
 bool girou = false;
+
+unsigned long lastStepTime = 0;
+float intervaloPasso_ms = 0;
+int passosDados = 0;
 
 static bool lastEmergencyState = HIGH;
 unsigned long lastEmergencyClick = 0;
@@ -332,6 +336,21 @@ void stepMotor(){
   }
   delay(1000); 
 }
+void motorDePassoLento() {
+  if (pomodoroIniciado && emTrabalho && passosDados < steps_per_rev) {
+    unsigned long agora = millis();
+    if (agora - lastStepTime >= intervaloPasso_ms) {
+      lastStepTime = agora;
+
+      digitalWrite(STEP, HIGH);
+      delayMicroseconds(500);
+      digitalWrite(STEP, LOW);
+      delayMicroseconds(500);
+
+      passosDados++;
+    }
+  }
+}
 
 void emergencyStop() {
   Serial.println("Parando o pomodoro de emergencia!");
@@ -378,7 +397,11 @@ void pomodoroIniciar() {
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
     girarServoInicio();
-    stepMotor();
+    intervaloPasso_ms = ((float)duracaoFoco * 60 * 1000) / steps_per_rev; // em milissegundos
+    passosDados = 0;
+    digitalWrite(DIR, HIGH); // Define direção
+    pinMode(STEP, OUTPUT);   // Garante que o pino esteja como saída
+    pinMode(DIR, OUTPUT);
     lastSecond = millis();
   }
 }
@@ -661,7 +684,7 @@ void loop() {
   pomodoroLogica();
   pomodoroFinalizar();
   pomodoroEmergencia();
-  
+  motorDePassoLento();
 }
 
 
