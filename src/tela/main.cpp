@@ -290,16 +290,16 @@ void atualizarTela() {
 
 
 //FUNÇÕES SERVO MOTOR
-// void girarServoFim() {
-//   for (int pos = 0; pos <= 100; pos++) {
-//     servo1.write(pos);
-//     //Serial.println(pos);
-//     delay(15);
-//   }
-// }
+void girarServoInicio() {
+  for (int pos = 0; pos <= 150; pos++) {
+    servo1.write(pos);
+    //Serial.println(pos);
+    delay(15);
+  }
+}
 
 void girarServoFim() {
-  for (int pos = 90; pos >= 5; pos--) {
+  for (int pos = 150; pos >= 10; pos--) {
     servo1.write(pos);
     //Serial.println(pos);
     delay(15);
@@ -361,7 +361,7 @@ void pomodoroIniciar() {
     pomodoroIniciado = true;
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
-    girarServoFim();
+    girarServoInicio();
     stepMotor();
     lastSecond = millis();
   }
