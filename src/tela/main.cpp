@@ -307,7 +307,7 @@ void atualizarTela() {
 
 //FUNÇÕES SERVO MOTOR
 void girarServoInicio() {
-  for (int pos = 0; pos <= 90; pos++) {
+  for (int pos = 0; pos <= 150; pos++) {
     servo1.write(pos);
     //Serial.println(pos);
     delay(15);
@@ -315,7 +315,7 @@ void girarServoInicio() {
 }
 
 void girarServoFim() {
-  for (int pos = 90; pos >= 0; pos--) {
+  for (int pos = 150; pos >= 10; pos--) {
     servo1.write(pos);
     //Serial.println(pos);
     delay(15);
