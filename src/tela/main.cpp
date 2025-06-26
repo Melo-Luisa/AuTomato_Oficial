@@ -1,645 +1,645 @@
-// // Projeto: Pomodoro com ESP32
-// #include <TFT_eSPI.h>
-// #include <SPI.h>
-// #include <Arduino.h>
-// #include <WiFi.h>
-// #include <AsyncTCP.h>
-// #include <ESPAsyncWebServer.h>
-// #include <ESP32Servo.h>
-// #include <FS.h>
-// #include <SPIFFS.h>
-// #include <DNSServer.h>
-// #include <Preferences.h>
-// #include <ArduinoJson.h> // Restaurado
+// Projeto: Pomodoro com ESP32
+#include <TFT_eSPI.h>
+#include <SPI.h>
+#include <Arduino.h>
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ESP32Servo.h>
+#include <FS.h>
+#include <SPIFFS.h>
+#include <DNSServer.h>
+#include <Preferences.h>
+#include <ArduinoJson.h> // Restaurado
 
-// #define BUZZER_PIN 13
-// #define BUTTON_PIN 36
-// #define BUTTON_EMERGENCY 36
-// #define BUZZER_CHANNEL 6
-// static const int servoPin = 5;
-// const int DIR = 33;
-// const int STEP = 32;
-// const int steps_per_rev = 200; 
+#define BUZZER_PIN 13
+#define BUTTON_PIN 36
+#define BUTTON_EMERGENCY 36
+#define BUZZER_CHANNEL 6
+static const int servoPin = 5;
+const int DIR = 33;
+const int STEP = 32;
+const int steps_per_rev = 200; 
 
-// Servo servo1;
-// Preferences preferences; // Para armazenar SSID e senha de Wi-Fi de forma persistente
-// DNSServer dnsServer;  
+Servo servo1;
+Preferences preferences; // Para armazenar SSID e senha de Wi-Fi de forma persistente
+DNSServer dnsServer;  
 
-// AsyncWebServer server(80);
-// // const char* ssid = "Redmi Note 14";
-// // const char* password = "giugiu24";
-// TFT_eSPI tft = TFT_eSPI();
+AsyncWebServer server(80);
+// const char* ssid = "Redmi Note 14";
+// const char* password = "giugiu24";
+TFT_eSPI tft = TFT_eSPI();
 
 
-// uint32_t lastSecond = 0;
-// int duracaoFoco = 25;
-// int duracaoPausa = 5;
-// int tempoRestante = duracaoFoco;
-// int num_ciclos = 1;
-// int contEmergency = 0;
+uint32_t lastSecond = 0;
+int duracaoFoco = 25;
+int duracaoPausa = 5;
+int tempoRestante = duracaoFoco;
+int num_ciclos = 1;
+int contEmergency = 0;
 
-// bool isConfigured = false;         // Flag: indica se já existe configuração de Wi-Fi salva
-// const byte DNS_PORT = 53; 
+bool isConfigured = false;         // Flag: indica se já existe configuração de Wi-Fi salva
+const byte DNS_PORT = 53; 
 
-// bool emTrabalho = true;
-// bool somTocado = false;
-// bool cicloFinalizado = false;
-// bool pomodoroIniciado = false;
-// bool esperandoResposta = false;
-// bool iniciarPomodoro_aux = false;
-// bool girou = false;
+bool emTrabalho = true;
+bool somTocado = false;
+bool cicloFinalizado = false;
+bool pomodoroIniciado = false;
+bool esperandoResposta = false;
+bool iniciarPomodoro_aux = false;
+bool girou = false;
 
-// static bool lastEmergencyState = HIGH;
-// unsigned long lastEmergencyClick = 0;
+static bool lastEmergencyState = HIGH;
+unsigned long lastEmergencyClick = 0;
 
-// String perguntaAtual = "";
+String perguntaAtual = "";
 
-// void setupCaptivePortalRoutes() {
-//   const char * captiveRoutes[] = {
-//     "/generate_204", "/hotspot-detect.html", "/ncsi.txt",
-//     "/redirect", "/connecttest.txt", "/fwlink"
-//   };
-//   for (auto route : captiveRoutes) {
-//     server.on(route, HTTP_GET, [](AsyncWebServerRequest *request){
-//       request->redirect("/");
-//     });
-//   }
-// }
+void setupCaptivePortalRoutes() {
+  const char * captiveRoutes[] = {
+    "/generate_204", "/hotspot-detect.html", "/ncsi.txt",
+    "/redirect", "/connecttest.txt", "/fwlink"
+  };
+  for (auto route : captiveRoutes) {
+    server.on(route, HTTP_GET, [](AsyncWebServerRequest *request){
+      request->redirect("/");
+    });
+  }
+}
 
-// // Função para iniciar o ESP32 como Access Point (AP), criando a rede "AuTomato"
+// Função para iniciar o ESP32 como Access Point (AP), criando a rede "AuTomato"
 
-// void startAccessPoint() {
-//   WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
-//   dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());         // Redireciona todo DNS para o próprio ESP32
+void startAccessPoint() {
+  WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());         // Redireciona todo DNS para o próprio ESP32
 
-//   // Rota principal: serve a página de configuração de Wi-Fi
-//   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-//     request->send(SPIFFS, "/index.html", "text/html"); // Problems on SPIFFS still on;
-//   });
-//   // JS da página de configuração
-//   server.on("/js/wifi.js", HTTP_GET, [](AsyncWebServerRequest *request){
-//     request->send(SPIFFS, "/js/wifi.js", "text/javascript");
-//   });
+  // Rota principal: serve a página de configuração de Wi-Fi
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/index.html", "text/html"); // Problems on SPIFFS still on;
+  });
+  // JS da página de configuração
+  server.on("/js/wifi.js", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/js/wifi.js", "text/javascript");
+  });
 
-//   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
-//     String json = "{\"pergunta\":\"" + perguntaAtual + "\"}";
-//     request->send(200, "application/json", json);
-//   });
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{\"pergunta\":\"" + perguntaAtual + "\"}";
+    request->send(200, "application/json", json);
+  });
 
-//   // Endpoint: recebe POST em /connect com JSON contendo ssid/senha (JSON por ser conectado com JS)
-//   server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
-//     String body;
-//     if (request->hasParam("plain", true)) {
-//       body = request->getParam("plain", true)->value();
-//     }
-//     // Faz o parse do JSON recebido
-//     DynamicJsonDocument doc(256);
-//     DeserializationError error = deserializeJson(doc, body);
-//     if (!error && doc.containsKey("ssid") && doc.containsKey("password")) {
-//       String ssid = doc["ssid"].as<String>();
-//       String password = doc["password"].as<String>();
+  // Endpoint: recebe POST em /connect com JSON contendo ssid/senha (JSON por ser conectado com JS)
+  server.on("/connect", HTTP_POST, [](AsyncWebServerRequest *request){
+    String body;
+    if (request->hasParam("plain", true)) {
+      body = request->getParam("plain", true)->value();
+    }
+    // Faz o parse do JSON recebido
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, body);
+    if (!error && doc.containsKey("ssid") && doc.containsKey("password")) {
+      String ssid = doc["ssid"].as<String>();
+      String password = doc["password"].as<String>();
 
-//       // Salva as credenciais em memória flash (even without energy)
-//       preferences.begin("wifi", false);
-//       preferences.putString("ssid", ssid);
-//       preferences.putString("password", password);
-//       preferences.end();
+      // Salva as credenciais em memória flash (even without energy)
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", ssid);
+      preferences.putString("password", password);
+      preferences.end();
 
-//       // Responde ao frontend confirmando sucesso
-//       AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"success\":true}");
-//       response->addHeader("Access-Control-Allow-Origin", "*");
-//       request->send(response);
+      // Responde ao frontend confirmando sucesso
+      AsyncWebServerResponse *response = request->beginResponse(200, "application/json", "{\"success\":true}");
+      response->addHeader("Access-Control-Allow-Origin", "*");
+      request->send(response);
 
-//       delay(1000); // Garante envio da resposta antes de reiniciar
-//       ESP.restart(); // Reinicia para conectar à rede informada
-//     } else {
-//       AsyncWebServerResponse *response = request->beginResponse(400, "application/json", "{\"success\":false}");
-//       response->addHeader("Access-Control-Allow-Origin", "*");
-//       request->send(response);
-//     }
+      delay(1000); // Garante envio da resposta antes de reiniciar
+      ESP.restart(); // Reinicia para conectar à rede informada
+    } else {
+      AsyncWebServerResponse *response = request->beginResponse(400, "application/json", "{\"success\":false}");
+      response->addHeader("Access-Control-Allow-Origin", "*");
+      request->send(response);
+    }
     
-//   });
+  });
 
-//   // Endpoint legado: aceita POST de formulário para /save-wifi
-//   server.on("/save-wifi", HTTP_POST, [](AsyncWebServerRequest *request){
-//     if (request->hasParam("ssid", true) && request->hasParam("password", true)) {
-//       String ssid = request->getParam("ssid", true)->value();
-//       String password = request->getParam("password", true)->value();
+  // Endpoint legado: aceita POST de formulário para /save-wifi
+  server.on("/save-wifi", HTTP_POST, [](AsyncWebServerRequest *request){
+    if (request->hasParam("ssid", true) && request->hasParam("password", true)) {
+      String ssid = request->getParam("ssid", true)->value();
+      String password = request->getParam("password", true)->value();
 
-//       preferences.begin("wifi", false);
-//       preferences.putString("ssid", ssid);
-//       preferences.putString("password", password);
-//       preferences.end();
+      preferences.begin("wifi", false);
+      preferences.putString("ssid", ssid);
+      preferences.putString("password", password);
+      preferences.end();
 
-//       request->send(200, "text/plain", "Salvo");
-//       delay(1000);
-//       ESP.restart();
-//     } else {
-//       request->send(400, "text/plain", "Erro");
-//     }
-//   });
+      request->send(200, "text/plain", "Salvo");
+      delay(1000);
+      ESP.restart();
+    } else {
+      request->send(400, "text/plain", "Erro");
+    }
+  });
 
-//   // Arquivos estáticos (css, js, html) do SPIFFS, padrão = index.html
-//   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  // Arquivos estáticos (css, js, html) do SPIFFS, padrão = index.html
+  server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
-//   // Qualquer rota não encontrada redireciona para index.html (útil para SPA)
-//   server.onNotFound([](AsyncWebServerRequest *request){
-//     request->send(SPIFFS, "/index.html", "text/html");
-//   });
+  // Qualquer rota não encontrada redireciona para index.html (útil para SPA)
+  server.onNotFound([](AsyncWebServerRequest *request){
+    request->send(SPIFFS, "/index.html", "text/html");
+  });
 
-//   // Configura as rotas do portal cativo
-//   setupCaptivePortalRoutes();
+  // Configura as rotas do portal cativo
+  setupCaptivePortalRoutes();
 
-//   server.begin();
+  server.begin();
   
-// }
+}
 
 
-// // Função para conectar à rede Wi-Fi previamente salva e servir o site principal
-// void startStationMode() {
-//   preferences.begin("wifi", true);
-//   String ssid = preferences.getString("ssid", "");
-//   String password = preferences.getString("password", "");
-//   preferences.end();
+// Função para conectar à rede Wi-Fi previamente salva e servir o site principal
+void startStationMode() {
+  preferences.begin("wifi", true);
+  String ssid = preferences.getString("ssid", "");
+  String password = preferences.getString("password", "");
+  preferences.end();
 
-//   WiFi.begin(ssid.c_str(), password.c_str());
+  WiFi.begin(ssid.c_str(), password.c_str());
 
-//   Serial.print("Conectando a ");
-//   Serial.println(ssid);
+  Serial.print("Conectando a ");
+  Serial.println(ssid);
 
-//   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
-//     String json = "{\"pergunta\":\"" + perguntaAtual + "\"}";
-//     request->send(200, "application/json", json);
-//   });
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = "{\"pergunta\":\"" + perguntaAtual + "\"}";
+    request->send(200, "application/json", json);
+  });
 
-//   unsigned long startAttemptTime = millis();
-//   // Tenta conectar por até 15 segundos
-//   while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 15000) {
-//     delay(500);
-//     Serial.print(".");
-//   }
+  unsigned long startAttemptTime = millis();
+  // Tenta conectar por até 15 segundos
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 15000) {
+    delay(500);
+    Serial.print(".");
+  }
 
-//   if (WiFi.status() == WL_CONNECTED) {
-//     Serial.println("\nConectado com sucesso!");
-//     // Serve o site principal (ex: pre.html) para quem acessa o ESP32 pela rede
-//     server.serveStatic("/", SPIFFS, "/").setDefaultFile("/index.html");
-//     server.onNotFound([](AsyncWebServerRequest *request){
-//       request->send(SPIFFS, "/index.html", "text/html");
-//     });
-//     server.begin();
-//   } else {
-//     Serial.println("Falha na conexão. Voltando para AP.");
-//     // Se não conseguiu conectar, volta para modo AP para nova configuração
-//     startAccessPoint();
-//   }
-// }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nConectado com sucesso!");
+    // Serve o site principal (ex: pre.html) para quem acessa o ESP32 pela rede
+    server.serveStatic("/", SPIFFS, "/").setDefaultFile("/index.html");
+    server.onNotFound([](AsyncWebServerRequest *request){
+      request->send(SPIFFS, "/index.html", "text/html");
+    });
+    server.begin();
+  } else {
+    Serial.println("Falha na conexão. Voltando para AP.");
+    // Se não conseguiu conectar, volta para modo AP para nova configuração
+    startAccessPoint();
+  }
+}
 
-// void salvarResposta(const String& pergunta, const String& resposta) {
-//   JsonDocument doc;
-//   doc["pergunta"] = pergunta;
-//   doc["resposta"] = resposta;
-//   doc["timestamp"] = millis(); // ou algum RTC se tiver
+void salvarResposta(const String& pergunta, const String& resposta) {
+  JsonDocument doc;
+  doc["pergunta"] = pergunta;
+  doc["resposta"] = resposta;
+  doc["timestamp"] = millis(); // ou algum RTC se tiver
 
-//   fs::File file = SPIFFS.open("/respostas.json", FILE_APPEND);
-//   if (file) {
-//     serializeJson(doc, file);
-//     file.println();
-//     file.close();
-//     Serial.println("Resposta salva com sucesso");
-//   } else {
-//     Serial.println("Erro ao abrir arquivo para salvar");
-//   }
-// }
+  fs::File file = SPIFFS.open("/respostas.json", FILE_APPEND);
+  if (file) {
+    serializeJson(doc, file);
+    file.println();
+    file.close();
+    Serial.println("Resposta salva com sucesso");
+  } else {
+    Serial.println("Erro ao abrir arquivo para salvar");
+  }
+}
 
-// void playTone(int freq, int dur) {
-//   ledcSetup(BUZZER_CHANNEL, freq, 8);
-//   ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
-//   ledcWrite(BUZZER_CHANNEL, 128);
-//   delay(dur);
-//   ledcWrite(BUZZER_CHANNEL, 0);
-// }
+void playTone(int freq, int dur) {
+  ledcSetup(BUZZER_CHANNEL, freq, 8);
+  ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
+  ledcWrite(BUZZER_CHANNEL, 128);
+  delay(dur);
+  ledcWrite(BUZZER_CHANNEL, 0);
+}
 
-// void tocarToneInicializacao() {
-//     ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
-//     int melodia[] = { 523, 659, 784, 1047 }; // C5, E5, G5, C6
-//     int duracao[] = { 150, 150, 150, 300 };  // ms
+void tocarToneInicializacao() {
+    ledcAttachPin(BUZZER_PIN, BUZZER_CHANNEL);
+    int melodia[] = { 523, 659, 784, 1047 }; // C5, E5, G5, C6
+    int duracao[] = { 150, 150, 150, 300 };  // ms
 
-//     for (int i = 0; i < 4; i++) {
-//         ledcWriteTone(BUZZER_CHANNEL, melodia[i]);
-//         delay(duracao[i]);
-//     }
-//     ledcWriteTone(BUZZER_CHANNEL, 0); // Para o buzzer
-// }
+    for (int i = 0; i < 4; i++) {
+        ledcWriteTone(BUZZER_CHANNEL, melodia[i]);
+        delay(duracao[i]);
+    }
+    ledcWriteTone(BUZZER_CHANNEL, 0); // Para o buzzer
+}
 
-// void playWorkEndTone() {
-//   playTone(1000, 200); delay(100);
-//   playTone(1200, 200); delay(100);
-//   playTone(1500, 300);
-// }
+void playWorkEndTone() {
+  playTone(1000, 200); delay(100);
+  playTone(1200, 200); delay(100);
+  playTone(1500, 300);
+}
 
-// void playBreakEndTone() {
-//   playTone(500, 500);
-// }
+void playBreakEndTone() {
+  playTone(500, 500);
+}
 
-// void playEmergencyTone() {
-//   playTone(2000, 500); delay(100);
-//   playTone(2000, 500); delay(100);
-//   playTone(2000, 500);
-// }
+void playEmergencyTone() {
+  playTone(2000, 500); delay(100);
+  playTone(2000, 500); delay(100);
+  playTone(2000, 500);
+}
 
-// void mostrarPerguntaTFT(const String& pergunta) {
-//   tft.fillScreen(TFT_WHITE);
-//   tft.setTextColor(TFT_YELLOW, TFT_WHITE);
-//   tft.setTextSize(2);
-//   int16_t x = (TFT_WIDTH - tft.textWidth((char*)pergunta.c_str())) / 2;
-//   tft.setCursor(x, 50);
-//   tft.println(pergunta);
-// }
+void mostrarPerguntaTFT(const String& pergunta) {
+  tft.fillScreen(TFT_WHITE);
+  tft.setTextColor(TFT_YELLOW, TFT_WHITE);
+  tft.setTextSize(2);
+  int16_t x = (TFT_WIDTH - tft.textWidth((char*)pergunta.c_str())) / 2;
+  tft.setCursor(x, 50);
+  tft.println(pergunta);
+}
 
-// void atualizarTela() {
-//   if (esperandoResposta) return;
-//   uint16_t bgColor = emTrabalho ? TFT_RED : TFT_SKYBLUE;
-//   tft.fillScreen(TFT_WHITE);
-//   tft.setTextSize(2);
+void atualizarTela() {
+  if (esperandoResposta) return;
+  uint16_t bgColor = emTrabalho ? TFT_RED : TFT_SKYBLUE;
+  tft.fillScreen(TFT_WHITE);
+  tft.setTextSize(2);
 
-//   if (!pomodoroIniciado) {
-//     tft.setTextColor(TFT_RED, TFT_WHITE);
-//     //int16_t x1 = (TFT_WIDTH - tft.textWidth("Logar a rede")) /2;
-//     //int16_t x2 = (TFT_WIDTH - tft.textWidth("para iniciar!")) /2;
-//     tft.setCursor(80, 80); 
-//     tft.print("Logar a rede");
-//     tft.setCursor(100, 120);
-//     tft.print("para iniciar!");
-//   } else {
-//     tft.setTextColor(bgColor, TFT_WHITE);
-//     String status = emTrabalho ? "Trabalhando..." : "Pausa...";
-//     int16_t xStatus = (tft.width() - tft.textWidth((char*)status.c_str())) / 2;
-//     tft.setCursor(xStatus, 50);
-//     tft.print(status);
+  if (!pomodoroIniciado) {
+    tft.setTextColor(TFT_RED, TFT_WHITE);
+    //int16_t x1 = (TFT_WIDTH - tft.textWidth("Logar a rede")) /2;
+    //int16_t x2 = (TFT_WIDTH - tft.textWidth("para iniciar!")) /2;
+    tft.setCursor(80, 80); 
+    tft.print("Logar a rede");
+    tft.setCursor(100, 120);
+    tft.print("para iniciar!");
+  } else {
+    tft.setTextColor(bgColor, TFT_WHITE);
+    String status = emTrabalho ? "Trabalhando..." : "Pausa...";
+    int16_t xStatus = (tft.width() - tft.textWidth((char*)status.c_str())) / 2;
+    tft.setCursor(xStatus, 50);
+    tft.print(status);
 
-//     int minutos = tempoRestante / 60;
-//     int segundos = tempoRestante % 60;
-//     tft.setTextSize(6);
-//     char tempoStr[6];
-//     sprintf(tempoStr, "%02d:%02d", minutos, segundos);
-//     int16_t xTempo = (tft.width() - tft.textWidth(tempoStr)) / 2;
-//     tft.setCursor(xTempo, 100);
-//     tft.print(tempoStr);
-//   }
-// }
+    int minutos = tempoRestante / 60;
+    int segundos = tempoRestante % 60;
+    tft.setTextSize(6);
+    char tempoStr[6];
+    sprintf(tempoStr, "%02d:%02d", minutos, segundos);
+    int16_t xTempo = (tft.width() - tft.textWidth(tempoStr)) / 2;
+    tft.setCursor(xTempo, 100);
+    tft.print(tempoStr);
+  }
+}
 
 
-// //FUNÇÕES SERVO MOTOR
-// void girarServoInicio() {
-//   for (int pos = 0; pos <= 150; pos++) {
-//     servo1.write(pos);
-//     //Serial.println(pos);
-//     delay(15);
-//   }
-// }
+//FUNÇÕES SERVO MOTOR
+void girarServoInicio() {
+  for (int pos = 0; pos <= 150; pos++) {
+    servo1.write(pos);
+    //Serial.println(pos);
+    delay(15);
+  }
+}
 
-// void girarServoFim() {
-//   for (int pos = 150; pos >= 10; pos--) {
-//     servo1.write(pos);
-//     //Serial.println(pos);
-//     delay(15);
-//   }
-// }
+void girarServoFim() {
+  for (int pos = 150; pos >= 10; pos--) {
+    servo1.write(pos);
+    //Serial.println(pos);
+    delay(15);
+  }
+}
 
-// //FUNÇÕES MOTOR DE PASSO
-// void stepMotor(){
-//   for(int i = 0; i<steps_per_rev; i++){
-//     digitalWrite(STEP, HIGH);
-//     delayMicroseconds(2000);
-//     digitalWrite(STEP, LOW);
-//     delayMicroseconds(2000);
-//   }
-//   delay(1000); 
-// }
+//FUNÇÕES MOTOR DE PASSO
+void stepMotor(){
+  for(int i = 0; i<steps_per_rev; i++){
+    digitalWrite(STEP, HIGH);
+    delayMicroseconds(2000);
+    digitalWrite(STEP, LOW);
+    delayMicroseconds(2000);
+  }
+  delay(1000); 
+}
 
-// void emergencyStop() {
-//   Serial.println("Parando o pomodoro de emergencia!");
-//   pomodoroIniciado = false;
-//   emTrabalho = true;
-//   tempoRestante = duracaoFoco;
-//   somTocado = false;
-//   cicloFinalizado = false;
-//   esperandoResposta = false;
-//   girarServoFim();
-//   atualizarTela();
-// }
+void emergencyStop() {
+  Serial.println("Parando o pomodoro de emergencia!");
+  pomodoroIniciado = false;
+  emTrabalho = true;
+  tempoRestante = duracaoFoco;
+  somTocado = false;
+  cicloFinalizado = false;
+  esperandoResposta = false;
+  girarServoFim();
+  atualizarTela();
+}
 
-// void screenEmergency() {
-//   tft.fillScreen(TFT_RED);
-//   tft.setTextColor(TFT_WHITE, TFT_RED);
-//   tft.setTextSize(4);
-//   tft.setCursor(20, 100);
-//   tft.print("BOTAO DE EMERGENCIA ACIONADO!");
-//   playEmergencyTone();
-//   delay(200);
-//   emergencyStop();
-// }
+void screenEmergency() {
+  tft.fillScreen(TFT_RED);
+  tft.setTextColor(TFT_WHITE, TFT_RED);
+  tft.setTextSize(4);
+  tft.setCursor(20, 100);
+  tft.print("BOTAO DE EMERGENCIA ACIONADO!");
+  playEmergencyTone();
+  delay(200);
+  emergencyStop();
+}
 
-// void pomodoroBotaoIniciar() {
-//   if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == LOW) {
-//     delay(200);
-//     perguntaAtual = "Pré Formulario";
-//     esperandoResposta = true;
-//     iniciarPomodoro_aux = true;
-//   }
-// }
+void pomodoroBotaoIniciar() {
+  if (!pomodoroIniciado && digitalRead(BUTTON_PIN) == LOW) {
+    delay(200);
+    perguntaAtual = "Pré Formulario";
+    esperandoResposta = true;
+    iniciarPomodoro_aux = true;
+  }
+}
 
-// void pomodoroIniciar() {
-//   if (!pomodoroIniciado && iniciarPomodoro_aux) {
+void pomodoroIniciar() {
+  if (!pomodoroIniciado && iniciarPomodoro_aux) {
     
-//     playWorkEndTone();
-//     tft.fillScreen(TFT_WHITE);
-//     tft.setTextColor(TFT_BLACK, TFT_WHITE);
-//     tft.setTextSize(2);
-//     tft.setCursor(50, 70);
-//     tft.print("Pomodoro Iniciado!");
-//     pomodoroIniciado = true;
-//     iniciarPomodoro_aux = false;
-//     Serial.println("Entrou em pomodoroIniciar");
-//     girarServoInicio();
-//     stepMotor();
-//     lastSecond = millis();
-//   }
-// }
+    playWorkEndTone();
+    tft.fillScreen(TFT_WHITE);
+    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+    tft.setTextSize(2);
+    tft.setCursor(50, 70);
+    tft.print("Pomodoro Iniciado!");
+    pomodoroIniciado = true;
+    iniciarPomodoro_aux = false;
+    Serial.println("Entrou em pomodoroIniciar");
+    girarServoInicio();
+    stepMotor();
+    lastSecond = millis();
+  }
+}
 
-// void pomodoroLogica() {
-//   if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
-//     lastSecond += 1000;
-//     tempoRestante--;
+void pomodoroLogica() {
+  if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
+    lastSecond += 1000;
+    tempoRestante--;
 
-//     if (tempoRestante >= 0) atualizarTela();
+    if (tempoRestante >= 0) atualizarTela();
 
-//     if (tempoRestante < 0 && !somTocado) {
-//       somTocado = true;
-//       if (emTrabalho) {
-//         playWorkEndTone();
-//         emTrabalho = false;
-//         tempoRestante = duracaoPausa;
-//       } else {
-//         playBreakEndTone();
-//         cicloFinalizado = true;
-//         if (num_ciclos > 1) {
-//           emTrabalho = true;
-//           tempoRestante = duracaoFoco;
-//         }
-//         num_ciclos--;
-//       }
-//       atualizarTela();
-//     }
+    if (tempoRestante < 0 && !somTocado) {
+      somTocado = true;
+      if (emTrabalho) {
+        playWorkEndTone();
+        emTrabalho = false;
+        tempoRestante = duracaoPausa;
+      } else {
+        playBreakEndTone();
+        cicloFinalizado = true;
+        if (num_ciclos > 1) {
+          emTrabalho = true;
+          tempoRestante = duracaoFoco;
+        }
+        num_ciclos--;
+      }
+      atualizarTela();
+    }
 
-//     if (somTocado && tempoRestante >= 0)
-//       somTocado = false;
-//   }
-// }
+    if (somTocado && tempoRestante >= 0)
+      somTocado = false;
+  }
+}
 
-// void pomodoroFinalizar() {
-//   if (num_ciclos <= 0 && cicloFinalizado) {
-//     if (somTocado) {
-//       somTocado = false;
-//       cicloFinalizado = true;
-//       playWorkEndTone();
-//       perguntaAtual = "Pós Formulario";
-//       esperandoResposta = true;
-//     }
+void pomodoroFinalizar() {
+  if (num_ciclos <= 0 && cicloFinalizado) {
+    if (somTocado) {
+      somTocado = false;
+      cicloFinalizado = true;
+      playWorkEndTone();
+      perguntaAtual = "Pós Formulario";
+      esperandoResposta = true;
+    }
 
-//     if (!esperandoResposta) {
-//       cicloFinalizado = false;
-//       tft.fillScreen(TFT_WHITE);
-//       tft.setTextColor(TFT_RED, TFT_WHITE);
-//       tft.setTextSize(2);
-//       //int16_t xFim = (TFT_WIDTH - tft.textWidth("FIM!")) / 2;
-//       tft.setCursor(30, 50);
-//       tft.print("Obrigada por usar o Automato!");
-//       tft.setCursor(50, 130);
-//       tft.setTextSize(1);
-//       tft.print("Giulia, Luisa, Giovana e Luigi.");
-//       girarServoFim();
-//     }
-//   }
-// }
+    if (!esperandoResposta) {
+      cicloFinalizado = false;
+      tft.fillScreen(TFT_WHITE);
+      tft.setTextColor(TFT_RED, TFT_WHITE);
+      tft.setTextSize(2);
+      //int16_t xFim = (TFT_WIDTH - tft.textWidth("FIM!")) / 2;
+      tft.setCursor(30, 50);
+      tft.print("Obrigada por usar o Automato!");
+      tft.setCursor(50, 130);
+      tft.setTextSize(1);
+      tft.print("Giulia, Luisa, Giovana e Luigi.");
+      girarServoFim();
+    }
+  }
+}
 
-// void pomodoroEmergencia() {
-//   bool currentState = digitalRead(BUTTON_EMERGENCY);
-//   unsigned long now = millis();
+void pomodoroEmergencia() {
+  bool currentState = digitalRead(BUTTON_EMERGENCY);
+  unsigned long now = millis();
 
-//   if (lastEmergencyState == LOW && currentState == HIGH) {
-//     if (now - lastEmergencyClick > 5000) {
-//       contEmergency = 0; // Reset se passou mais de 5 segundos entre cliques
-//     }
+  if (lastEmergencyState == LOW && currentState == HIGH) {
+    if (now - lastEmergencyClick > 5000) {
+      contEmergency = 0; // Reset se passou mais de 5 segundos entre cliques
+    }
 
-//     if (now - lastEmergencyClick > 300) { // Debounce de 300ms
-//       contEmergency++;
-//       Serial.print("Emergencia cliques: "); Serial.println(contEmergency);
-//       lastEmergencyClick = now;
+    if (now - lastEmergencyClick > 300) { // Debounce de 300ms
+      contEmergency++;
+      Serial.print("Emergencia cliques: "); Serial.println(contEmergency);
+      lastEmergencyClick = now;
 
-//       if (contEmergency >= 10) {
-//         screenEmergency();
-//         contEmergency = 0;
-//       }
-//     }
-//   }
+      if (contEmergency >= 10) {
+        screenEmergency();
+        contEmergency = 0;
+      }
+    }
+  }
 
-//   lastEmergencyState = currentState;
-// }
+  lastEmergencyState = currentState;
+}
 
-// void abertura() {
-//   tft.setCursor(50, 90, 2);
-//   tft.setTextColor(TFT_RED);
-//   tft.setTextSize(3);
+void abertura() {
+  tft.setCursor(50, 90, 2);
+  tft.setTextColor(TFT_RED);
+  tft.setTextSize(3);
 
 
-//   String word = "AUTOMATO";
+  String word = "AUTOMATO";
 
-//   for (int i = 0; i < word.length(); i++) {
-//     tft.print(word[i]);
-//     delay(100);
-//   }
-//   delay(200);
-//   tft.fillScreen(TFT_WHITE);
+  for (int i = 0; i < word.length(); i++) {
+    tft.print(word[i]);
+    delay(100);
+  }
+  delay(200);
+  tft.fillScreen(TFT_WHITE);
 
-// }
+}
 
-// void setup() {
-//   Serial.begin(115200);
-//   WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
-//   Serial.println(WiFi.softAPIP());
-//   // tocarToneInicializacao();
+void setup() {
+  Serial.begin(115200);
+  WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
+  Serial.println(WiFi.softAPIP());
+  // tocarToneInicializacao();
 
-//   pinMode(BUZZER_PIN, OUTPUT);
-//   pinMode(BUTTON_PIN, INPUT_PULLUP);
-//   pinMode(BUTTON_EMERGENCY, INPUT_PULLUP);
-//   servo1.attach(servoPin);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_EMERGENCY, INPUT_PULLUP);
+  servo1.attach(servoPin);
 
  
 
-//   if (!SPIFFS.begin(true)) {
-//     Serial.println("Erro ao montar SPIFFS");
-//     return;
-//   }
-//   Serial.println(WiFi.softAPIP());          // Mostra o IP local do AP (geralmente 192.168.4.1)
-//   Serial.println(WiFi.softAPmacAddress());
-//   Serial.println("Modo Access Point iniciado. Conecte-se à rede AuTomato.");
-//   Serial.println("Acesse http://" + WiFi.softAPIP().toString() + " para configurar o Wi-Fi.");
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Erro ao montar SPIFFS");
+    return;
+  }
+  Serial.println(WiFi.softAPIP());          // Mostra o IP local do AP (geralmente 192.168.4.1)
+  Serial.println(WiFi.softAPmacAddress());
+  Serial.println("Modo Access Point iniciado. Conecte-se à rede AuTomato.");
+  Serial.println("Acesse http://" + WiFi.softAPIP().toString() + " para configurar o Wi-Fi.");
 
-//   tft.init();
-//   tft.setRotation(3);
-//   tft.fillScreen(TFT_WHITE);
-//   abertura();
-//   // tft.setTextColor(TFT_BLACK, TFT_WHITE);
-//   // tft.setTextSize(2);
-//   // tft.setCursor(10, 10);
-//   // //tft.print("Pomodoro configuravel");
-//   // delay(1000);
-//   atualizarTela();
-
-
-
-//   // Verifica se já existe configuração Wi-Fi salva
-//   preferences.begin("wifi", true);
-//   isConfigured = preferences.isKey("ssid") && preferences.isKey("password");
-//   preferences.end();
+  tft.init();
+  tft.setRotation(3);
+  tft.fillScreen(TFT_WHITE);
+  abertura();
+  // tft.setTextColor(TFT_BLACK, TFT_WHITE);
+  // tft.setTextSize(2);
+  // tft.setCursor(10, 10);
+  // //tft.print("Pomodoro configuravel");
+  // delay(1000);
+  atualizarTela();
 
 
 
-//   // decide: vai para modo estação (Wi-Fi da casa) ou AP (portais cativos geralmente são usados por redes de Wi-Fi públicas para gerenciar o acesso e a autenticação do usuário)
-//   if (isConfigured) {
-//     startStationMode();
-//   } else {
-//     startAccessPoint();
-//   }
-
-//   //Serial.println(WiFi.localIP());
-
-//   //IP e MAC do ESP32
-//   // Serial.print("IP: ");
-//   // Serial.println(WiFi.localIP());
-//   // Serial.print("MAC: ");
-//   // Serial.println(WiFi.macAddress());
-
-//   String ipStr = "IP: " + WiFi.localIP().toString();
-//   tft.setTextSize(2);
-//   tft.setTextColor(TFT_RED, TFT_WHITE);
-//   tft.setCursor(240 - tft.textWidth((char*)ipStr.c_str()) - 5, 230);
-//   //tft.print(ipStr);
-
-//   server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *req){
-//     req->send(SPIFFS, "/index.html", "text/html");
-//   });
-
-//   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *req){
-//     req->send(SPIFFS, "/style.css", "text/css");
-//   });
-
-//   //salvar no json
-//   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
-//     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
-//                   String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false") +
-//                   String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false") +
-//                   String(",\"pergunta\":\"") + (esperandoResposta ? perguntaAtual : "") + String("\"}");
-//     req->send(200, "application/json", json);
-//   });
-//   esperandoResposta = true;
-
-//   //mudar o temporizador - tempo e pausa
-//   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
-//     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
-//       duracaoFoco = req->getParam("foco", true)->value().toInt();
-//       duracaoPausa = req->getParam("pausa", true)->value().toInt();
-//       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
-//       req->send(200, "text/plain", "Ciclos atualizados");
-//     } else req->send(400, "text/plain", "Parâmetros inválidos");
-//   });
-
-//   //pegar resposta 
-//   server.on("/resposta", HTTP_POST, [](AsyncWebServerRequest *req){
-//   // FORMULÁRIO INICIAL (pré)
-//     if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
-//       String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
-//                         ", Motivação: " + req->getParam("motivation", true)->value() +
-//                         ", Produtividade: " + req->getParam("productivity", true)->value();
-//       salvarResposta("Pre", resposta);
-//       esperandoResposta = false;
-//       req->send(200, "text/plain", "Recebido (pré)");
-//       return;
-//     }
-
-//     // FORMULÁRIO FINAL (pós)
-//     if (req->hasParam("focoFinal", true)) {
-//       String focoFinal = req->getParam("focoFinal", true)->value();
-//       String comentarios = req->hasParam("comentarios", true) ? req->getParam("comentarios", true)->value() : "";
-
-//       String progresso = "";
-//       for (int i = 1; i <= 8; i++) {
-//         String nome = "task" + String(i);
-//         if (req->hasParam(nome, true)) {
-//           progresso += nome + ": " + req->getParam(nome, true)->value() + "% ";
-//         }
-//       }
-
-//       String resposta = "Foco final: " + focoFinal + "\nComentários: " + comentarios + "\nProgresso: " + progresso;
-//       salvarResposta("Pos", resposta);
-//       esperandoResposta = false;
-//       req->send(200, "text/plain", "Recebido (pós)");
-//       return;
-//     }
-
-//     // Nenhum dado válido
-//     req->send(400, "text/plain", "Parâmetros inválidos");
-//   });
+  // Verifica se já existe configuração Wi-Fi salva
+  preferences.begin("wifi", true);
+  isConfigured = preferences.isKey("ssid") && preferences.isKey("password");
+  preferences.end();
 
 
-//   // Nova rota para visualizar o arquivo respostas.json
-//   server.on("/getrespostas", HTTP_GET, [](AsyncWebServerRequest *req){
-//     fs::File file = SPIFFS.open("/respostas.json", FILE_READ);
-//     if (!file || file.isDirectory()) {
-//       Serial.println("Falha ao abrir respostas.json para leitura");
-//       req->send(404, "text/plain", "Arquivo nao encontrado");
-//       return;
-//     }
 
-//     String fileContent = "[\n"; // abre o array
-//     bool firstLine = true;
+  // decide: vai para modo estação (Wi-Fi da casa) ou AP (portais cativos geralmente são usados por redes de Wi-Fi públicas para gerenciar o acesso e a autenticação do usuário)
+  if (isConfigured) {
+    startStationMode();
+  } else {
+    startAccessPoint();
+  }
 
-//     while(file.available()){
-//       String line = file.readStringUntil('\n');
-//       line.trim(); // remove espaços e quebras extras
+  //Serial.println(WiFi.localIP());
 
-//       if (line.length() > 0) {
-//         if (!firstLine) {
-//           fileContent += ",\n"; // adiciona vírgula entre os objetos
-//         }
-//         fileContent += line;
-//         firstLine = false;
-//       }
-//     }
+  //IP e MAC do ESP32
+  // Serial.print("IP: ");
+  // Serial.println(WiFi.localIP());
+  // Serial.print("MAC: ");
+  // Serial.println(WiFi.macAddress());
 
-//     fileContent += "\n]"; // fecha o array
-//     file.close();
+  String ipStr = "IP: " + WiFi.localIP().toString();
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_RED, TFT_WHITE);
+  tft.setCursor(240 - tft.textWidth((char*)ipStr.c_str()) - 5, 230);
+  //tft.print(ipStr);
 
-//     req->send(200, "application/json", fileContent);
-//   });
+  server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(SPIFFS, "/index.html", "text/html");
+  });
 
-//   //esperandoResposta = true;
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(SPIFFS, "/style.css", "text/css");
+  });
+
+  //salvar no json
+  server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
+    String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
+                  String(",\"emTrabalho\":") + (emTrabalho ? "true" : "false") +
+                  String(",\"iniciado\":") + (pomodoroIniciado ? "true" : "false") +
+                  String(",\"pergunta\":\"") + (esperandoResposta ? perguntaAtual : "") + String("\"}");
+    req->send(200, "application/json", json);
+  });
+  esperandoResposta = true;
+
+  //mudar o temporizador - tempo e pausa
+  server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
+    if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
+      duracaoFoco = req->getParam("foco", true)->value().toInt();
+      duracaoPausa = req->getParam("pausa", true)->value().toInt();
+      tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
+      req->send(200, "text/plain", "Ciclos atualizados");
+    } else req->send(400, "text/plain", "Parâmetros inválidos");
+  });
+
+  //pegar resposta 
+  server.on("/resposta", HTTP_POST, [](AsyncWebServerRequest *req){
+  // FORMULÁRIO INICIAL (pré)
+    if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
+      String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
+                        ", Motivação: " + req->getParam("motivation", true)->value() +
+                        ", Produtividade: " + req->getParam("productivity", true)->value();
+      salvarResposta("Pre", resposta);
+      esperandoResposta = false;
+      req->send(200, "text/plain", "Recebido (pré)");
+      return;
+    }
+
+    // FORMULÁRIO FINAL (pós)
+    if (req->hasParam("focoFinal", true)) {
+      String focoFinal = req->getParam("focoFinal", true)->value();
+      String comentarios = req->hasParam("comentarios", true) ? req->getParam("comentarios", true)->value() : "";
+
+      String progresso = "";
+      for (int i = 1; i <= 8; i++) {
+        String nome = "task" + String(i);
+        if (req->hasParam(nome, true)) {
+          progresso += nome + ": " + req->getParam(nome, true)->value() + "% ";
+        }
+      }
+
+      String resposta = "Foco final: " + focoFinal + "\nComentários: " + comentarios + "\nProgresso: " + progresso;
+      salvarResposta("Pos", resposta);
+      esperandoResposta = false;
+      req->send(200, "text/plain", "Recebido (pós)");
+      return;
+    }
+
+    // Nenhum dado válido
+    req->send(400, "text/plain", "Parâmetros inválidos");
+  });
 
 
-// }
+  // Nova rota para visualizar o arquivo respostas.json
+  server.on("/getrespostas", HTTP_GET, [](AsyncWebServerRequest *req){
+    fs::File file = SPIFFS.open("/respostas.json", FILE_READ);
+    if (!file || file.isDirectory()) {
+      Serial.println("Falha ao abrir respostas.json para leitura");
+      req->send(404, "text/plain", "Arquivo nao encontrado");
+      return;
+    }
 
-// void loop() {
-//     if (!isConfigured) {
-//         dnsServer.processNextRequest();
-//     }
-//   pomodoroBotaoIniciar();
-//   if (esperandoResposta) return;
-//   pomodoroIniciar();
-//   pomodoroLogica();
-//   pomodoroFinalizar();
-//   pomodoroEmergencia();
+    String fileContent = "[\n"; // abre o array
+    bool firstLine = true;
+
+    while(file.available()){
+      String line = file.readStringUntil('\n');
+      line.trim(); // remove espaços e quebras extras
+
+      if (line.length() > 0) {
+        if (!firstLine) {
+          fileContent += ",\n"; // adiciona vírgula entre os objetos
+        }
+        fileContent += line;
+        firstLine = false;
+      }
+    }
+
+    fileContent += "\n]"; // fecha o array
+    file.close();
+
+    req->send(200, "application/json", fileContent);
+  });
+
+  //esperandoResposta = true;
+
+
+}
+
+void loop() {
+    if (!isConfigured) {
+        dnsServer.processNextRequest();
+    }
+  pomodoroBotaoIniciar();
+  if (esperandoResposta) return;
+  pomodoroIniciar();
+  pomodoroLogica();
+  pomodoroFinalizar();
+  pomodoroEmergencia();
   
-// }
+}
 
 
