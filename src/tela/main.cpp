@@ -285,6 +285,22 @@ void atualizarTela() {
     int16_t xTempo = (tft.width() - tft.textWidth(tempoStr)) / 2;
     tft.setCursor(xTempo, 100);
     tft.print(tempoStr);
+    tft.setTextSize(2);
+    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+
+    if (num_ciclos >= 0) {
+      String ciclosStr = "Ciclos restantes: " + String(num_ciclos);
+      int16_t xCiclos = (tft.width() - tft.textWidth(ciclosStr)) / 2;
+      tft.setCursor(xCiclos, 180);
+      tft.print(ciclosStr);
+    } 
+    
+    else {
+      String completosStr = "Ciclos completos!";
+      int16_t xCompletos = (tft.width() - tft.textWidth(completosStr)) / 2;
+      tft.setCursor(xCompletos, 180);
+      tft.print(completosStr);
+    }
   }
 }
 
@@ -468,7 +484,7 @@ void setup() {
   Serial.begin(115200);
   WiFi.softAP("AuTomato", "estudante",6);                    // Cria rede Wi-Fi com nome e senha fixos
   Serial.println(WiFi.softAPIP());
-  // tocarToneInicializacao();
+  //tocarToneInicializacao();
 
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -535,6 +551,11 @@ void setup() {
     req->send(SPIFFS, "/style.css", "text/css");
   });
 
+  // NOVA ROTA PARA A PÁGINA DE RESPOSTAS
+  server.on("/respostas.html", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(SPIFFS, "/respostas.html", "text/html");
+  });
+  
   //salvar no json
   server.on("/status", HTTP_GET, [](AsyncWebServerRequest *req){
     String json = String("{\"fim\":") + (cicloFinalizado ? "true" : "false") +
@@ -548,8 +569,9 @@ void setup() {
   //mudar o temporizador - tempo e pausa
   server.on("/config", HTTP_POST, [](AsyncWebServerRequest *req){
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
-      duracaoFoco = req->getParam("foco", true)->value().toInt();
-      duracaoPausa = req->getParam("pausa", true)->value().toInt();
+      duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
+      duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
+      num_ciclos = req->getParam("ciclos", true)->value().toInt();//para quantos ciclos o pomodoro vai rodar
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
       req->send(200, "text/plain", "Ciclos atualizados");
     } else req->send(400, "text/plain", "Parâmetros inválidos");

@@ -46,7 +46,7 @@ textarea {
   min-width: 25em;
 }
 
-button {
+button, .button-link {
   padding: 10px;
   font-size: 16px;
   background-color: #d43100;
@@ -57,8 +57,14 @@ button {
   cursor: pointer;
   transition: background-color 0.3s;
 }
+.button-link {
+  display: inline-block;
+  text-decoration: none; /* Remove o sublinhado do link */
+  text-align: center;
+  margin-top: 15px;
+}
 
-button:hover {
+button:hover, .button-link:hover {
   background-color: #bb2b00;
 }
 
@@ -103,6 +109,23 @@ form #pre-form{
 .tasks input[type="range"] {
   width: 100%;
   margin-bottom: 15px;
+}
+.analise-container {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+}
+.stat {
+  margin-bottom: 15px;
+}
+.stat-label {
+  font-weight: bold;
+}
+.stat-value {
+  font-size: 1.2em;
+  color: #0056b3;
 }
 
 

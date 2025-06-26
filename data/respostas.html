@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Respostas - AuTomato</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Análise das Respostas</h1>
+    <div id="analise-container">
+        <p>Calculando médias...</p>
+    </div>
+    <a href="/" class="button-link">Voltar para o Início</a>
+
+    <script>
+        window.onload = function() {
+            fetch('/getrespostas')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('analise-container');
+                    
+                    if (!data || data.length === 0) {
+                        container.innerHTML = '<p>Nenhuma resposta salva para analisar.</p>';
+                        return;
+                    }
+
+                    let totalFatigue = 0;
+                    let totalMotivation = 0;
+                    let totalProductivity = 0;
+                    let validEntries = 0;
+
+                    data.forEach(item => {
+                        // A análise só faz sentido para as respostas do formulário "Pre"
+                        if (item.pergunta === "Pre") {
+                            // Usamos Regex para encontrar os números na string de resposta
+                            const fatigueMatch = item.resposta.match(/Cansaço: (\d+)/);
+                            const motivationMatch = item.resposta.match(/Motivação: (\d+)/);
+                            const productivityMatch = item.resposta.match(/Produtividade: (\d+)/);
+
+                            // Se todos os valores foram encontrados na string
+                            if (fatigueMatch && motivationMatch && productivityMatch) {
+                                totalFatigue += parseInt(fatigueMatch[1], 10);
+                                totalMotivation += parseInt(motivationMatch[1], 10);
+                                totalProductivity += parseInt(productivityMatch[1], 10);
+                                validEntries++;
+                            }
+                        }
+                    });
+
+                    if (validEntries === 0) {
+                        container.innerHTML = '<p>Não há dados do formulário inicial para calcular as médias.</p>';
+                        return;
+                    }
+
+                    // Calcula as médias
+                    const avgFatigue = totalFatigue / validEntries;
+                    const avgMotivation = totalMotivation / validEntries;
+                    const avgProductivity = totalProductivity / validEntries;
+
+                    // Exibe os resultados
+                    container.innerHTML = `
+                        <div class="stat">
+                            <span class="stat-label">Média de Cansaço:</span>
+                            <span class="stat-value">${avgFatigue.toFixed(2)}</span>
+                            (em uma escala de 1 a 4)
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Média de Motivação:</span>
+                            <span class="stat-value">${avgMotivation.toFixed(2)}</span>
+                            (em uma escala de 1 a 4)
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Média de Produtividade:</span>
+                            <span class="stat-value">${avgProductivity.toFixed(2)}</span>
+                            (em uma escala de 1 a 4)
+                        </div>
+                        <hr>
+                        <p>Análise baseada em <strong>${validEntries}</strong> sessões de estudo.</p>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar ou processar respostas:', error);
+                    document.getElementById('analise-container').innerHTML = '<p>Erro ao carregar as respostas. Verifique o console para mais detalhes.</p>';
+                });
+        };
+    </script>
+</body>
+</html>
