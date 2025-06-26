@@ -19,7 +19,7 @@
 static const int servoPin = 5;
 const int DIR = 33;
 const int STEP = 32;
-const int steps_per_rev = 3200;
+const int steps_per_rev = 3200; //3200
 
 Servo servo1;
 Preferences preferences; // Para armazenar SSID e senha de Wi-Fi de forma persistente
@@ -50,7 +50,8 @@ bool iniciarPomodoro_aux = false;
 bool girou = false;
 
 unsigned long lastStepTime = 0;
-float intervaloPasso_ms = 0;
+float intervaloPasso_ms_pausa = 0;
+float intervaloPasso_ms_foco = 0;
 int passosDados = 0;
 
 static bool lastEmergencyState = HIGH;
@@ -157,7 +158,6 @@ void startAccessPoint() {
   server.begin();
   
 }
-
 
 // Função para conectar à rede Wi-Fi previamente salva e servir o site principal
 void startStationMode() {
@@ -327,19 +327,12 @@ void girarServoFim() {
 }
 
 //FUNÇÕES MOTOR DE PASSO
-void stepMotor(){
-  for(int i = 0; i<steps_per_rev; i++){
-    digitalWrite(STEP, HIGH);
-    delayMicroseconds(2000);
-    digitalWrite(STEP, LOW);
-    delayMicroseconds(2000);
-  }
-  delay(1000); 
-}
+
 void motorDePassoLento() {
-  if (pomodoroIniciado && emTrabalho && passosDados < steps_per_rev) {
+  if (pomodoroIniciado && passosDados < steps_per_rev) {
     unsigned long agora = millis();
-    if (agora - lastStepTime >= intervaloPasso_ms) {
+    if(emTrabalho){
+        if (agora - lastStepTime >= intervaloPasso_ms_foco) {
       lastStepTime = agora;
 
       digitalWrite(STEP, HIGH);
@@ -349,6 +342,20 @@ void motorDePassoLento() {
 
       passosDados++;
     }
+    }
+    else {
+      if (agora - lastStepTime >= intervaloPasso_ms_pausa) {
+        lastStepTime = agora;
+
+        digitalWrite(STEP, HIGH);
+        delayMicroseconds(500);
+        digitalWrite(STEP, LOW);
+        delayMicroseconds(500);
+
+        passosDados++;
+      }
+    }
+    
   }
 }
 
@@ -397,7 +404,7 @@ void pomodoroIniciar() {
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
     girarServoInicio();
-    intervaloPasso_ms = ((float)duracaoFoco * 60 * 1000) / steps_per_rev; // em milissegundos
+    intervaloPasso_ms_foco = ((float)duracaoFoco * 60 * 1000) / steps_per_rev;
     passosDados = 0;
     digitalWrite(DIR, HIGH); // Define direção
     pinMode(STEP, OUTPUT);   // Garante que o pino esteja como saída
@@ -419,12 +426,20 @@ void pomodoroLogica() {
         playWorkEndTone();
         emTrabalho = false;
         tempoRestante = duracaoPausa;
+        // Recalcula para o tempo de pausa
+        intervaloPasso_ms_pausa = ((float)duracaoPausa * 60 * 1000) / steps_per_rev;
+        passosDados = 0;
+        digitalWrite(DIR, LOW); // Se quiser inverter o sentido na pausa
       } else {
         playBreakEndTone();
         cicloFinalizado = true;
         if (num_ciclos > 1) {
           emTrabalho = true;
           tempoRestante = duracaoFoco;
+          // Recalcula para o tempo de trabalho
+          intervaloPasso_ms_foco= ((float)duracaoFoco * 60 * 1000) / steps_per_rev;
+          passosDados = 0;
+          digitalWrite(DIR, HIGH); // Sentido original
         }
         num_ciclos--;
       }
@@ -594,6 +609,8 @@ void setup() {
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
       duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
       duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
+      intervaloPasso_ms_foco = req->getParam("foco", true)->value().toFloat()*60*1000 / steps_per_rev; // Recalcula o intervalo de passo
+      intervaloPasso_ms_pausa=req->getParam("pausa", true)->value().toFloat()*60*1000 / steps_per_rev;
       num_ciclos = req->getParam("ciclos", true)->value().toInt();//para quantos ciclos o pomodoro vai rodar
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
       req->send(200, "text/plain", "Ciclos atualizados");
