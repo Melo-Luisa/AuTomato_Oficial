@@ -50,9 +50,9 @@ bool iniciarPomodoro_aux = false;
 bool girou = false;
 
 unsigned long lastStepTime = 0;
-float intervaloPasso_ms_pausa = 0;
-float intervaloPasso_ms_foco = 0;
-int passosDados = 0;
+//float intervaloPasso_ms_pausa = 0;
+//float intervaloPasso_ms_foco = 0;
+//int passosDados = 0;
 
 static bool lastEmergencyState = HIGH;
 unsigned long lastEmergencyClick = 0;
@@ -329,34 +329,11 @@ void girarServoFim() {
 //FUNÇÕES MOTOR DE PASSO
 
 void motorDePassoLento() {
-  if (pomodoroIniciado && passosDados < steps_per_rev) {
-    unsigned long agora = millis();
-    if(emTrabalho){ //se está no tempo de trabalho
-        if (agora - lastStepTime >= intervaloPasso_ms_foco) {
-      lastStepTime = agora;
-
-      digitalWrite(STEP, HIGH);
-      delayMicroseconds(500);
-      digitalWrite(STEP, LOW);
-      delayMicroseconds(500);
-
-      passosDados++;
-    }
-    }
-    else {//se está no tempo de pausa
-      if (agora - lastStepTime >= intervaloPasso_ms_pausa) {
-        lastStepTime = agora;
-
-        digitalWrite(STEP, HIGH);
-        delayMicroseconds(500);
-        digitalWrite(STEP, LOW);
-        delayMicroseconds(500);
-
-        passosDados++;
-      }
-    }
-    
-  }
+  digitalWrite(STEP, HIGH);
+    delayMicroseconds(500);
+    digitalWrite(STEP, LOW);
+    delayMicroseconds(500);
+    //passosDados++;
 }
 
 void emergencyStop() {
@@ -404,8 +381,8 @@ void pomodoroIniciar() {
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
     girarServoInicio();
-    intervaloPasso_ms_foco = ((float)duracaoFoco* 1000) / steps_per_rev;
-    passosDados = 0;
+    //intervaloPasso_ms_foco = ((float)duracaoFoco * 60 * 1000) / steps_per_rev;
+    //passosDados = 0;
     digitalWrite(DIR, HIGH); // Define direção
     pinMode(STEP, OUTPUT);   // Garante que o pino esteja como saída
     pinMode(DIR, OUTPUT);
@@ -417,6 +394,8 @@ void pomodoroLogica() {
   if (pomodoroIniciado && millis() - lastSecond >= 1000 && num_ciclos > 0) {
     lastSecond += 1000;
     tempoRestante--;
+    motorDePassoLento();
+    motorDePassoLento();
 
     if (tempoRestante >= 0) atualizarTela();
 
@@ -427,9 +406,9 @@ void pomodoroLogica() {
         emTrabalho = false;
         tempoRestante = duracaoPausa;
         // Recalcula para o tempo de pausa
-        intervaloPasso_ms_pausa = ((float)duracaoPausa* 1000) / steps_per_rev;
-        passosDados = 0;
-        digitalWrite(DIR, LOW); // Se quiser inverter o sentido na pausa
+        //intervaloPasso_ms_pausa = ((float)duracaoPausa * 1000) / steps_per_rev;
+        //passosDados = 0;
+        //digitalWrite(DIR, LOW); // Se quiser inverter o sentido na pausa
       } else {
         playBreakEndTone();
         cicloFinalizado = true;
@@ -437,9 +416,9 @@ void pomodoroLogica() {
           emTrabalho = true;
           tempoRestante = duracaoFoco;
           // Recalcula para o tempo de trabalho
-          intervaloPasso_ms_foco= ((float)duracaoFoco * 1000) / steps_per_rev;
-          passosDados = 0;
-          digitalWrite(DIR, HIGH); // Sentido original
+          //intervaloPasso_ms_foco= ((float)duracaoFoco * 1000) / steps_per_rev;
+          //passosDados = 0;
+          //digitalWrite(DIR, HIGH); // Sentido original
         }
         num_ciclos--;
       }
@@ -609,8 +588,8 @@ void setup() {
     if (req->hasParam("foco", true) && req->hasParam("pausa", true)) {
       duracaoFoco = req->getParam("foco", true)->value().toInt()*60;
       duracaoPausa = req->getParam("pausa", true)->value().toInt()*60;
-      intervaloPasso_ms_foco = req->getParam("foco", true)->value().toFloat()*60*1000 / steps_per_rev; // Recalcula o intervalo de passo
-      intervaloPasso_ms_pausa=req->getParam("pausa", true)->value().toFloat()*60*1000 / steps_per_rev;
+      //intervaloPasso_ms_foco = req->getParam("foco", true)->value().toFloat()*60*1000 / steps_per_rev; // Recalcula o intervalo de passo
+      //intervaloPasso_ms_pausa=req->getParam("pausa", true)->value().toFloat()*60*1000 / steps_per_rev;
       num_ciclos = req->getParam("ciclos", true)->value().toInt();//para quantos ciclos o pomodoro vai rodar
       tempoRestante = emTrabalho ? duracaoFoco : duracaoPausa;
       req->send(200, "text/plain", "Ciclos atualizados");
@@ -701,7 +680,7 @@ void loop() {
   pomodoroLogica();
   pomodoroFinalizar();
   pomodoroEmergencia();
-  motorDePassoLento();
+  //motorDePassoLento();
 }
 
 
