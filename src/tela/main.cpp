@@ -331,7 +331,7 @@ void girarServoFim() {
 void motorDePassoLento() {
   if (pomodoroIniciado && passosDados < steps_per_rev) {
     unsigned long agora = millis();
-    if(emTrabalho){
+    if(emTrabalho){ //se está no tempo de trabalho
         if (agora - lastStepTime >= intervaloPasso_ms_foco) {
       lastStepTime = agora;
 
@@ -343,7 +343,7 @@ void motorDePassoLento() {
       passosDados++;
     }
     }
-    else {
+    else {//se está no tempo de pausa
       if (agora - lastStepTime >= intervaloPasso_ms_pausa) {
         lastStepTime = agora;
 
@@ -404,7 +404,7 @@ void pomodoroIniciar() {
     iniciarPomodoro_aux = false;
     Serial.println("Entrou em pomodoroIniciar");
     girarServoInicio();
-    intervaloPasso_ms_foco = ((float)duracaoFoco * 60 * 1000) / steps_per_rev;
+    intervaloPasso_ms_foco = ((float)duracaoFoco* 1000) / steps_per_rev;
     passosDados = 0;
     digitalWrite(DIR, HIGH); // Define direção
     pinMode(STEP, OUTPUT);   // Garante que o pino esteja como saída
@@ -427,7 +427,7 @@ void pomodoroLogica() {
         emTrabalho = false;
         tempoRestante = duracaoPausa;
         // Recalcula para o tempo de pausa
-        intervaloPasso_ms_pausa = ((float)duracaoPausa * 60 * 1000) / steps_per_rev;
+        intervaloPasso_ms_pausa = ((float)duracaoPausa* 1000) / steps_per_rev;
         passosDados = 0;
         digitalWrite(DIR, LOW); // Se quiser inverter o sentido na pausa
       } else {
@@ -437,7 +437,7 @@ void pomodoroLogica() {
           emTrabalho = true;
           tempoRestante = duracaoFoco;
           // Recalcula para o tempo de trabalho
-          intervaloPasso_ms_foco= ((float)duracaoFoco * 60 * 1000) / steps_per_rev;
+          intervaloPasso_ms_foco= ((float)duracaoFoco * 1000) / steps_per_rev;
           passosDados = 0;
           digitalWrite(DIR, HIGH); // Sentido original
         }
