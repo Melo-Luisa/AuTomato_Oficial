@@ -163,25 +163,25 @@
     });
   }
 
-  // setInterval(() => {
-  //   fetch("/status")
-  //     .then(response => response.json())
-  //     .then(data => {
-  //       if (data.pergunta === "Pré Formulario") {
-  //         document.getElementById("pre-form").style.display = "block";
-  //         document.getElementById("pos-form").style.display = "none";
-  //         document.getElementById("pergunta").innerText = "Antes de iniciar:";
-  //       } else if (data.pergunta === "Pós Formulario") {
-  //         document.getElementById("pre-form").style.display = "none";
-  //         document.getElementById("pos-form").style.display = "block";
-  //         document.getElementById("pergunta").innerText = "Após finalização:";
-  //       } else {
-  //         document.getElementById("pre-form").style.display = "none";
-  //         document.getElementById("pos-form").style.display = "none";
-  //         document.getElementById("pergunta").innerText = "";
-  //       }
-  //     });
-  // }, 2000);
+  setInterval(() => {
+    fetch("/status")
+      .then(response => response.json())
+      .then(data => {
+        if (data.pergunta === "Pré Formulario") {
+          document.getElementById("pre-form").style.display = "block";
+          document.getElementById("pos-form").style.display = "none";
+          document.getElementById("pergunta").innerText = "Antes de iniciar:";
+        } else if (data.pergunta === "Pós Formulario") {
+          document.getElementById("pre-form").style.display = "none";
+          document.getElementById("pos-form").style.display = "block";
+          document.getElementById("pergunta").innerText = "Após finalização:";
+        } else {
+          document.getElementById("pre-form").style.display = "none";
+          document.getElementById("pos-form").style.display = "none";
+          document.getElementById("pergunta").innerText = "";
+        }
+      });
+  }, 2000);
 </script>
 
   </body>

@@ -329,10 +329,14 @@ void girarServoFim() {
 //FUNÇÕES MOTOR DE PASSO
 
 void motorDePassoLento() {
-  digitalWrite(STEP, HIGH);
+  for(int i = 0; i < 10
+    ; i++) {
+    digitalWrite(STEP, HIGH);
     delayMicroseconds(500);
     digitalWrite(STEP, LOW);
     delayMicroseconds(500);
+  }
+  
     //passosDados++;
 }
 
@@ -383,9 +387,8 @@ void pomodoroIniciar() {
     girarServoInicio();
     //intervaloPasso_ms_foco = ((float)duracaoFoco * 60 * 1000) / steps_per_rev;
     //passosDados = 0;
-    digitalWrite(DIR, HIGH); // Define direção
-    pinMode(STEP, OUTPUT);   // Garante que o pino esteja como saída
-    pinMode(DIR, OUTPUT);
+    //digitalWrite(DIR, HIGH); // Define direção
+    
     lastSecond = millis();
   }
 }
@@ -395,7 +398,7 @@ void pomodoroLogica() {
     lastSecond += 1000;
     tempoRestante--;
     motorDePassoLento();
-    motorDePassoLento();
+    motorDePassoLento(); // Motor de passo lento para não travar o loop
 
     if (tempoRestante >= 0) atualizarTela();
 
@@ -446,8 +449,8 @@ void pomodoroFinalizar() {
       tft.setTextColor(TFT_RED, TFT_WHITE);
       tft.setTextSize(2);
       //int16_t xFim = (TFT_WIDTH - tft.textWidth("FIM!")) / 2;
-      tft.setCursor(30, 50);
-      tft.print("Obrigada por usar o Automato!");
+      tft.setCursor(40, 50);
+      tft.print("Obrigado por usar o Automato!");
       tft.setCursor(50, 130);
       tft.setTextSize(1);
       tft.print("Giulia, Luisa, Giovana e Luigi.");
@@ -506,6 +509,9 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(BUTTON_EMERGENCY, INPUT_PULLUP);
+  pinMode(STEP, OUTPUT);   // Garante que o pino esteja como saída
+  pinMode(DIR, OUTPUT);
+  digitalWrite(DIR, HIGH); // Define direção inicial do motor de passo
   servo1.attach(servoPin);
 
  
@@ -610,15 +616,15 @@ void setup() {
     }
 
     // FORMULÁRIO FINAL (pós)
-  if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
-      String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
-                        ", Motivação: " + req->getParam("motivation", true)->value() +
-                        ", Produtividade: " + req->getParam("productivity", true)->value();
-      salvarResposta("Pos", resposta);
-      esperandoResposta = false;
-      req->send(200, "text/plain", "Recebido (pos)");
-      return;
-    }
+    if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
+        String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
+                          ", Motivação: " + req->getParam("motivation", true)->value() +
+                          ", Produtividade: " + req->getParam("productivity", true)->value();
+        salvarResposta("Pos", resposta);
+        esperandoResposta = false;
+        req->send(200, "text/plain", "Recebido (pos)");
+        return;
+      }
 
     // Nenhum dado válido
     req->send(400, "text/plain", "Parâmetros inválidos");
