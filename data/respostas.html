@@ -1,89 +1,152 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise de Respostas - AuTomato</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Análise de Respostas - AuTomato</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Análise das Respostas</h1>
-    <div id="analise-container">
-        <p>Calculando médias...</p>
-    </div>
-    <a href="/" class="button-link">Voltar para o Início</a>
+  <h1>Análise das Respostas</h1>
+  <div id="analise-container">
+    <p>Calculando médias...</p>
+  </div>
 
-    <script>
-        window.onload = function() {
-            fetch('/getrespostas')
-                .then(response => response.json())
-                .then(data => {
-                    const container = document.getElementById('analise-container');
-                    
-                    if (!data || data.length === 0) {
-                        container.innerHTML = '<p>Nenhuma resposta salva para analisar.</p>';
-                        return;
-                    }
+  <button id="btnDownloadCsv">Download CSV</button>
 
-                    let totalFatigue = 0;
-                    let totalMotivation = 0;
-                    let totalProductivity = 0;
-                    let validEntries = 0;
+  <a href="/" class="button-link">Voltar para o Início</a>
 
-                    data.forEach(item => {
-                        // A análise só faz sentido para as respostas do formulário "Pre"
-                        if (item.pergunta === "Pre") {
-                            // Usamos Regex para encontrar os números na string de resposta
-                            const fatigueMatch = item.resposta.match(/Cansaço: (\d+)/);
-                            const motivationMatch = item.resposta.match(/Motivação: (\d+)/);
-                            const productivityMatch = item.resposta.match(/Produtividade: (\d+)/);
+  <script>
+    let respostasData = [];
 
-                            // Se todos os valores foram encontrados na string
-                            if (fatigueMatch && motivationMatch && productivityMatch) {
-                                totalFatigue += parseInt(fatigueMatch[1], 10);
-                                totalMotivation += parseInt(motivationMatch[1], 10);
-                                totalProductivity += parseInt(productivityMatch[1], 10);
-                                validEntries++;
-                            }
-                        }
-                    });
+    function gerarCSV(data) {
+      const header = ['Tipo', 'Resposta', 'Timestamp'];
+      const linhas = data.map(item => [
+        `"${item.pergunta}"`,
+        `"${item.resposta.replace(/"/g, '""')}"`,
+        item.timestamp
+      ]);
+      const csvContent = [header, ...linhas].map(e => e.join(',')).join('\n');
+      return csvContent;
+    }
 
-                    if (validEntries === 0) {
-                        container.innerHTML = '<p>Não há dados do formulário inicial para calcular as médias.</p>';
-                        return;
-                    }
+    function downloadCSV(csvContent, filename = 'respostas.csv') {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
 
-                    // Calcula as médias
-                    const avgFatigue = totalFatigue / validEntries;
-                    const avgMotivation = totalMotivation / validEntries;
-                    const avgProductivity = totalProductivity / validEntries;
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
 
-                    // Exibe os resultados
-                    container.innerHTML = `
-                        <div class="stat">
-                            <span class="stat-label">Média de Cansaço:</span>
-                            <span class="stat-value">${avgFatigue.toFixed(2)}</span>
-                            (em uma escala de 1 a 4)
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Média de Motivação:</span>
-                            <span class="stat-value">${avgMotivation.toFixed(2)}</span>
-                            (em uma escala de 1 a 4)
-                        </div>
-                        <div class="stat">
-                            <span class="stat-label">Média de Produtividade:</span>
-                            <span class="stat-value">${avgProductivity.toFixed(2)}</span>
-                            (em uma escala de 1 a 4)
-                        </div>
-                        <hr>
-                        <p>Análise baseada em <strong>${validEntries}</strong> sessões de estudo.</p>
-                    `;
-                })
-                .catch(error => {
-                    console.error('Erro ao buscar ou processar respostas:', error);
-                    document.getElementById('analise-container').innerHTML = '<p>Erro ao carregar as respostas. Verifique o console para mais detalhes.</p>';
-                });
-        };
-    </script>
+    window.onload = function () {
+      fetch('/getrespostas')
+        .then((response) => response.json())
+        .then((data) => {
+          respostasData = data;
+
+          const container = document.getElementById('analise-container');
+
+          if (!data || data.length === 0) {
+            container.innerHTML = '<p>Nenhuma resposta salva para analisar.</p>';
+            return;
+          }
+
+          let totalFatigue = 0;
+          let totalMotivation = 0;
+          let totalProductivity = 0;
+          let validEntries = 0;
+
+          data.forEach((item) => {
+            if (item.pergunta === 'Pre') {
+              const fatigueMatch = item.resposta.match(/Cansaço: (\d+)/);
+              const motivationMatch = item.resposta.match(/Motivação: (\d+)/);
+              const productivityMatch = item.resposta.match(/Produtividade: (\d+)/);
+
+              if (fatigueMatch && motivationMatch && productivityMatch) {
+                totalFatigue += parseInt(fatigueMatch[1], 10);
+                totalMotivation += parseInt(motivationMatch[1], 10);
+                totalProductivity += parseInt(productivityMatch[1], 10);
+                validEntries++;
+              }
+            }
+          });
+
+          if (validEntries === 0) {
+            container.innerHTML = '<p>Não há dados do formulário inicial para calcular as médias.</p>';
+            return;
+          }
+
+          const avgFatigue = totalFatigue / validEntries;
+          const avgMotivation = totalMotivation / validEntries;
+          const avgProductivity = totalProductivity / validEntries;
+
+          container.innerHTML = `
+            <div class="stat">
+              <span class="stat-label">Média de Cansaço:</span>
+              <span class="stat-value">${avgFatigue.toFixed(2)}</span>
+              (em uma escala de 1 a 4)
+            </div>
+            <div class="stat">
+              <span class="stat-label">Média de Motivação:</span>
+              <span class="stat-value">${avgMotivation.toFixed(2)}</span>
+              (em uma escala de 1 a 4)
+            </div>
+            <div class="stat">
+              <span class="stat-label">Média de Produtividade:</span>
+              <span class="stat-value">${avgProductivity.toFixed(2)}</span>
+              (em uma escala de 1 a 4)
+            </div>
+            <hr>
+            <p>Análise baseada em <strong>${validEntries}</strong> sessões de estudo.</p>
+          `;
+        })
+        .catch((error) => {
+          console.error('Erro ao buscar ou processar respostas:', error);
+          document.getElementById('analise-container').innerHTML =
+            '<p>Erro ao carregar as respostas. Verifique o console para mais detalhes.</p>';
+        });
+
+      document.getElementById('btnDownloadCsv').addEventListener('click', () => {
+        if (!respostasData || respostasData.length === 0) {
+          alert('Não há dados para exportar.');
+          return;
+        }
+        const csv = gerarCSV(respostasData);
+        downloadCSV(csv);
+      });
+    };
+
+    setInterval(() => {
+      fetch('/status')
+        .then(response => response.json())
+        .then(data => {
+          const preForm = document.getElementById('pre-form');
+          const posForm = document.getElementById('pos-form');
+          const perguntaDiv = document.getElementById('pergunta');
+
+          if (data.pergunta === "Pré Formulario") {
+            preForm.style.display = 'block';
+            posForm.style.display = 'none';
+            perguntaDiv.textContent = "Como você se sente para estudar?";
+          } else if (data.pergunta === "Pós Formulario") {
+            preForm.style.display = 'none';
+            posForm.style.display = 'block';
+            perguntaDiv.textContent = "Como você se sente após estudar?";
+          } else {
+            // Esconde ambos se não houver pergunta pendente
+            preForm.style.display = 'none';
+            posForm.style.display = 'none';
+            perguntaDiv.textContent = "";
+          }
+        })
+        .catch(err => console.error('Erro ao buscar status:', err));
+    }, 2000); // Checa a cada 2 segundos
+  </script>
 </body>
 </html>
