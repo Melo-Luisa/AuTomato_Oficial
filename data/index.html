@@ -61,32 +61,42 @@
       <button type="submit" onclick="enviarResposta()">Enviar</button>
     </form>
     <!-- FORMULÁRIO FINAL -->
-     <form id="pos-form" style="display: none;" autocomplete="off" novalidate  onsubmit="enviarRespostaPos(event); return false;">
-      <label for="focoFinal">Como está seu foco agora?</label>
-      <input
-        id="focoFinal"
-        name="focoFinal"
-        required
-        type="text"
-        autocomplete="off"
-        aria-label="Como está seu foco agora?"
-      />
-      <br>
-
-      <label for="comentarios">Comentários</label>
-      <textarea
-        id="comentarios"
-        name="comentarios"
-        autocomplete="off"
-        aria-label="Comentários"
-      ></textarea>
-
-      <h3>Avalie o progresso das tarefas realizadas</h3>
-      <div class="tasks">
-        <label for="task1">Tarefas: <span id="val1">0</span>%</label>
-        <input id="task1" name="task1" type="range" min="0" max="100" value="0" oninput="val1.innerText = this.value" aria-label="Progresso da Tarefa 1"/>
-      </div>
-      <button type="submit" onclick="enviarResposta()">Enviar Dados</button>
+    <form id="pos-form" onsubmit="enviarRespostaPos(event); return false;" autocomplete="off" novalidate style="display: none;">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Nenhum</th>
+            <th>Bem pouco</th>
+            <th>Mais ou menos</th>
+            <th>Em grande medida</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Quão cansado(a) você se sente agora?</td>
+            <td><input name="fatigue" required type="radio" value="1" aria-label="Nenhum cansaço"/></td>
+            <td><input name="fatigue" type="radio" value="2" aria-label="Bem pouco cansaço"/></td>
+            <td><input name="fatigue" type="radio" value="3" aria-label="Mais ou menos cansado"/></td>
+            <td><input name="fatigue" type="radio" value="4" aria-label="Muito cansado"/></td>
+          </tr>
+          <tr>
+            <td>Quão motivado(a) você se sente agora?</td>
+            <td><input name="motivation" required type="radio" value="1" aria-label="Nenhuma motivação"/></td>
+            <td><input name="motivation" type="radio" value="2" aria-label="Bem pouca motivação"/></td>
+            <td><input name="motivation" type="radio" value="3" aria-label="Mais ou menos motivado"/></td>
+            <td><input name="motivation" type="radio" value="4" aria-label="Muito motivado"/></td>
+          </tr>
+          <tr>
+            <td>Quão produtivo(a) você se sente agora?</td>
+            <td><input name="productivity" required type="radio" value="1" aria-label="Nada produtivo"/></td>
+            <td><input name="productivity" type="radio" value="2" aria-label="Bem pouco produtivo"/></td>
+            <td><input name="productivity" type="radio" value="3" aria-label="Mais ou menos produtivo"/></td>
+            <td><input name="productivity" type="radio" value="4" aria-label="Muito produtivo"/></td>
+          </tr>
+        </tbody>
+      </table>
+      <button type="submit" onclick="enviarResposta()">Enviar</button>
     </form>
 
 <script>
@@ -130,12 +140,16 @@
 
   function enviarRespostaPos(event) {
     event.preventDefault();
-    const focoFinal = document.getElementById("focoFinal").value;
-    const comentarios = document.getElementById("comentarios").value;
+    const fatigue = document.querySelector('input[name="fatigue"]:checked');
+    const motivation = document.querySelector('input[name="motivation"]:checked');
+    const productivity = document.querySelector('input[name="productivity"]:checked');
 
-    const progresso = `task1=${document.getElementById("task1").value}`;
+    if (!fatigue || !motivation || !productivity) {
+      alert("Por favor, responda todas as perguntas.");
+      return;
+    }
 
-    const body = `focoFinal=${encodeURIComponent(focoFinal)}&comentarios=${encodeURIComponent(comentarios)}&${progresso}`;
+    const body = `fatigue=${fatigue.value}&motivation=${motivation.value}&productivity=${productivity.value}`;
 
     fetch("/resposta", {
       method: "POST",
@@ -144,30 +158,30 @@
     }).then(res => {
       if (res.ok) {
         document.getElementById("pos-form").style.display = "none";
-        alert("Resposta final enviada!");
+        alert("Resposta enviada!");
       }
     });
   }
 
-  setInterval(() => {
-    fetch("/status")
-      .then(response => response.json())
-      .then(data => {
-        if (data.pergunta === "Pré Formulario") {
-          document.getElementById("pre-form").style.display = "block";
-          document.getElementById("pos-form").style.display = "none";
-          document.getElementById("pergunta").innerText = "Antes de iniciar:";
-        } else if (data.pergunta === "Pós Formulario") {
-          document.getElementById("pre-form").style.display = "none";
-          document.getElementById("pos-form").style.display = "block";
-          document.getElementById("pergunta").innerText = "Após finalização:";
-        } else {
-          document.getElementById("pre-form").style.display = "none";
-          document.getElementById("pos-form").style.display = "none";
-          document.getElementById("pergunta").innerText = "";
-        }
-      });
-  }, 2000);
+  // setInterval(() => {
+  //   fetch("/status")
+  //     .then(response => response.json())
+  //     .then(data => {
+  //       if (data.pergunta === "Pré Formulario") {
+  //         document.getElementById("pre-form").style.display = "block";
+  //         document.getElementById("pos-form").style.display = "none";
+  //         document.getElementById("pergunta").innerText = "Antes de iniciar:";
+  //       } else if (data.pergunta === "Pós Formulario") {
+  //         document.getElementById("pre-form").style.display = "none";
+  //         document.getElementById("pos-form").style.display = "block";
+  //         document.getElementById("pergunta").innerText = "Após finalização:";
+  //       } else {
+  //         document.getElementById("pre-form").style.display = "none";
+  //         document.getElementById("pos-form").style.display = "none";
+  //         document.getElementById("pergunta").innerText = "";
+  //       }
+  //     });
+  // }, 2000);
 </script>
 
   </body>

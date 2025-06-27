@@ -12,7 +12,7 @@
     <p>Calculando médias...</p>
   </div>
 
-  <button id="btnDownloadCsv">Download CSV</button>
+  <!-- <button id="btnDownloadCsv">Download CSV</button> -->
 
   <a href="/" class="button-link">Voltar para o Início</a>
 
@@ -30,19 +30,19 @@
       return csvContent;
     }
 
-    function downloadCSV(csvContent, filename = 'respostas.csv') {
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
+    // function downloadCSV(csvContent, filename = 'respostas.csv') {
+    //   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    //   const link = document.createElement('a');
+    //   const url = URL.createObjectURL(blob);
 
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }
+    //   link.setAttribute('href', url);
+    //   link.setAttribute('download', filename);
+    //   link.style.visibility = 'hidden';
+    //   document.body.appendChild(link);
+    //   link.click();
+    //   document.body.removeChild(link);
+    //   URL.revokeObjectURL(url);
+    // }
 
     window.onload = function () {
       fetch('/getrespostas')
@@ -63,7 +63,7 @@
           let validEntries = 0;
 
           data.forEach((item) => {
-            if (item.pergunta === 'Pre') {
+            if (item.pergunta === 'Pre' || item.pergunta === 'Pos') {
               const fatigueMatch = item.resposta.match(/Cansaço: (\d+)/);
               const motivationMatch = item.resposta.match(/Motivação: (\d+)/);
               const productivityMatch = item.resposta.match(/Produtividade: (\d+)/);
@@ -112,14 +112,14 @@
             '<p>Erro ao carregar as respostas. Verifique o console para mais detalhes.</p>';
         });
 
-      document.getElementById('btnDownloadCsv').addEventListener('click', () => {
-        if (!respostasData || respostasData.length === 0) {
-          alert('Não há dados para exportar.');
-          return;
-        }
-        const csv = gerarCSV(respostasData);
-        downloadCSV(csv);
-      });
+      // document.getElementById('btnDownloadCsv').addEventListener('click', () => {
+      //   if (!respostasData || respostasData.length === 0) {
+      //     alert('Não há dados para exportar.');
+      //     return;
+      //   }
+      //   const csv = gerarCSV(respostasData);
+      //   downloadCSV(csv);
+      // });
     };
 
     setInterval(() => {

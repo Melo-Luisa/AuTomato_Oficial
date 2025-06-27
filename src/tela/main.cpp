@@ -610,22 +610,13 @@ void setup() {
     }
 
     // FORMULÁRIO FINAL (pós)
-    if (req->hasParam("focoFinal", true)) {
-      String focoFinal = req->getParam("focoFinal", true)->value();
-      String comentarios = req->hasParam("comentarios", true) ? req->getParam("comentarios", true)->value() : "";
-
-      String progresso = "";
-      for (int i = 1; i <= 8; i++) {
-        String nome = "task" + String(i);
-        if (req->hasParam(nome, true)) {
-          progresso += nome + ": " + req->getParam(nome, true)->value() + "% ";
-        }
-      }
-
-      String resposta = "Foco final: " + focoFinal + "\nComentários: " + comentarios + "\nProgresso: " + progresso;
+  if (req->hasParam("fatigue", true) && req->hasParam("motivation", true) && req->hasParam("productivity", true)) {
+      String resposta = "Cansaço: " + req->getParam("fatigue", true)->value() +
+                        ", Motivação: " + req->getParam("motivation", true)->value() +
+                        ", Produtividade: " + req->getParam("productivity", true)->value();
       salvarResposta("Pos", resposta);
       esperandoResposta = false;
-      req->send(200, "text/plain", "Recebido (pós)");
+      req->send(200, "text/plain", "Recebido (pos)");
       return;
     }
 
